@@ -1,7 +1,7 @@
 {
   "description": "Connect with the AIS UTD community, explore events, and engage with fellow students passionate about the intersection of business and technology.",
   "robots": {
-    "index": false
+    "index": true
   },
   "accessibility": {
     "addBypassLinks": false,

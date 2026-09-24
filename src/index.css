@@ -1,5 +1,11 @@
-@import url('https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=general-sans@400,500,600&display=swap');
 @import 'tailwindcss';
+
+/* Self-hosted Fontshare fonts (Clash Display, General Sans) */
+@font-face { font-family: 'Clash Display'; src: url('/fonts/clash-display-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Clash Display'; src: url('/fonts/clash-display-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
 
 @theme inline {
   --font-display: 'Clash Display', sans-serif;
@@ -289,7 +295,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
-  padding-top: 68px;
+  padding-top: var(--nav-h);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -814,7 +820,7 @@ body {
 
 /* ─── Immersion: scroll parallax, cursor spotlight, card tilt ─── */
 
-:root { --spot-color: rgba(248, 174, 53, 0.10); }
+:root { --nav-h: 76px; --spot-color: rgba(248, 174, 53, 0.10); }
 [data-theme="light"] { --spot-color: rgba(201, 125, 0, 0.10); }
 
 @media (prefers-reduced-motion: no-preference) {
