@@ -210,8 +210,8 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
               : "rgba(164,176,194,0.55)",
         ringOuter: (a: number) => `rgba(248,174,53,${a})`,
         ringInner: "rgba(248,174,53,0.2)",
-        signalGlow0: "rgba(248,174,53,0.22)",
-        signalDot: "rgba(248,174,53,0.78)",
+        signalGlow0: "rgba(45,212,191,0.24)",
+        signalDot: "rgba(45,212,191,0.85)",
         centerFill: "rgba(248,174,53,0.12)",
         centerStroke: "rgba(248,174,53,0.68)",
       }
@@ -231,8 +231,8 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
               : "rgba(50,70,110,0.6)",
         ringOuter: (a: number) => `rgba(201,125,0,${a})`,
         ringInner: "rgba(201,125,0,0.18)",
-        signalGlow0: "rgba(201,125,0,0.2)",
-        signalDot: "rgba(201,125,0,0.8)",
+        signalGlow0: "rgba(15,139,141,0.22)",
+        signalDot: "rgba(15,139,141,0.85)",
         centerFill: "rgba(201,125,0,0.10)",
         centerStroke: "rgba(201,125,0,0.65)",
       }
@@ -863,7 +863,7 @@ function StatCounter({ target, label, suffix = "+", delay = 0 }: { target: numbe
     <div ref={ref} className="reveal stat-cell">
       <div className="stat-cell-number">
         {count.toLocaleString()}
-        <span style={{ color: "var(--accent)" }}>{suffix}</span>
+        <span style={{ color: "var(--accent-2)" }}>{suffix}</span>
       </div>
       <div className="stat-cell-label">{label}</div>
     </div>
@@ -1125,7 +1125,10 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
               </div>
               <div className="event-h-body">
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", border: "1px solid rgba(248,174,53,0.25)", borderRadius: 4, padding: "2px 9px", letterSpacing: "0.03em" }}>{ev.type}</span>
+                  <span style={ev.type === "Workshop"
+                    ? { fontSize: 11, fontWeight: 600, color: "var(--accent-2)", border: "1px solid rgba(var(--accent-2-rgb),0.3)", borderRadius: 4, padding: "2px 9px", letterSpacing: "0.03em" }
+                    : { fontSize: 11, fontWeight: 600, color: "var(--accent)", border: "1px solid rgba(248,174,53,0.25)", borderRadius: 4, padding: "2px 9px", letterSpacing: "0.03em" }
+                  }>{ev.type}</span>
                   {ev.partner && <span style={{ fontSize: 11, color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 4, padding: "2px 9px" }}>{ev.partner}</span>}
                 </div>
                 <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.025em", lineHeight: 1.15 }}>{ev.name}</h3>

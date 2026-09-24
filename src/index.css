@@ -26,6 +26,10 @@
   --accent-hover: #FFC04D;
   --accent-on:    #101722;
 
+  --accent-2:        #2DD4BF;
+  --accent-2-hover:  #5EEAD4;
+  --accent-2-rgb:    45, 212, 191;
+
   --grid-line: rgba(164,176,194,0.035);
 
   --nav-scrolled-bg:  rgba(16,23,34,0.92);
@@ -58,6 +62,10 @@
   --accent:       #C97D00;
   --accent-hover: #A86800;
   --accent-on:    #FFFFFF;
+
+  --accent-2:        #0F8B8D;
+  --accent-2-hover:  #0B6E70;
+  --accent-2-rgb:    15, 139, 141;
 
   --grid-line: rgba(15,23,42,0.04);
 
