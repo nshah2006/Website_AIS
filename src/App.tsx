@@ -3,6 +3,7 @@ import aisLogo from "./assets/ais-logo.png"
 import logoInogen from "./assets/logo-1.png"
 import logoSprouts from "./assets/logo-2.png"
 import logoDelta from "./assets/logo-3.png"
+import ContactForm from "./components/ContactForm"
 import logoVerizon from "./assets/logo-verizon.svg"
 import logoGoldman from "./assets/logo-goldmansachs.svg"
 import logoBofA from "./assets/logo-bankofamerica.svg"
@@ -1551,6 +1552,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("home")
   const [nextPage, setNextPage] = useState<Page | null>(null)
   const [theme, setTheme] = useTheme()
+  const [contactFormOpen, setContactFormOpen] = useState(false)
   useImmersion(page)
 
   const navigate = (p: Page) => {
@@ -1563,16 +1565,20 @@ export default function App() {
     }, 350)
   }
 
+  const openContactForm = () => setContactFormOpen(true)
+  const closeContactForm = () => setContactFormOpen(false)
+
   return (
     <div style={{ minHeight: "100%", display: "flex", flexDirection: "column", background: "var(--bg-primary)", transition: "background-color 0.28s ease" }}>
-      <Nav page={page} setPage={navigate} theme={theme} setTheme={setTheme} />
+      <Nav page={page} setPage={navigate} theme={theme} setTheme={setTheme} onGetInvolved={openContactForm} />
       <div className={nextPage ? "page-exit" : "page-enter"} style={{ flex: 1, position: "relative" }}>
-        {page === "home"     && <HomePage setPage={navigate} theme={theme} />}
+        {page === "home"     && <HomePage setPage={navigate} theme={theme} onGetInvolved={openContactForm} />}
         {page === "events"   && <EventsPage />}
         {page === "officers" && <OfficersPage />}
-        {page === "contact"  && <ContactPage />}
+        {page === "contact"  && <ContactPage onGetInvolved={openContactForm} />}
       </div>
-      <Footer setPage={navigate} />
+      <Footer setPage={navigate} onGetInvolved={openContactForm} />
+      {contactFormOpen && <ContactForm onClose={closeContactForm} source={`website_${page}`} />}
     </div>
   )
 }
