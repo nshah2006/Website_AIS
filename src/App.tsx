@@ -3,6 +3,9 @@ import aisLogo from "./assets/ais-logo.png"
 import logoInogen from "./assets/logo-1.png"
 import logoSprouts from "./assets/logo-2.png"
 import logoDelta from "./assets/logo-3.png"
+import logoVerizon from "./assets/logo-verizon.svg"
+import logoGoldman from "./assets/logo-goldmansachs.svg"
+import logoBofA from "./assets/logo-bankofamerica.svg"
 
 type Page = "home" | "officers" | "events" | "contact"
 type Theme = "dark" | "light"
@@ -568,7 +571,7 @@ function Nav({
           left: 0,
           right: 0,
           zIndex: 90,
-          height: 68,
+          height: "var(--nav-h)",
           background: navBg,
           backdropFilter: scrolled ? "blur(20px) saturate(1.8)" : "blur(4px)",
           borderBottom: `1px solid ${navBorderColor}`,
@@ -590,12 +593,12 @@ function Nav({
           <button
             onClick={() => setPage("home")}
             aria-label="AIS UTD — go to home"
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 10 }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
           >
-            <img src={aisLogo} alt="AIS UTD" style={{ height: 38, width: 38, borderRadius: "50%", objectFit: "cover", display: "block" }} />
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "var(--text-primary)", letterSpacing: "-0.025em", transition: "color 0.28s ease" }}>
+            <img src={aisLogo} alt="AIS UTD" style={{ height: 56, width: 56, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text-primary)", letterSpacing: "-0.025em", transition: "color 0.28s ease" }}>
               AIS{" "}
-              <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 13, color: "var(--text-secondary)", transition: "color 0.28s ease" }}>UTD</span>
+              <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 15, color: "var(--text-secondary)", transition: "color 0.28s ease" }}>UTD</span>
             </span>
           </button>
 
@@ -623,7 +626,7 @@ function Nav({
               {isDark ? <SunIcon /> : <MoonIcon />}
             </button>
 
-            <a href="https://forms.gle" className="join-btn hidden sm:inline-flex">
+            <a href="mailto:utdallasais@gmail.com" className="join-btn hidden sm:inline-flex">
               Get Involved
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
@@ -716,7 +719,7 @@ function Nav({
             </button>
           ))}
           <a
-            href="https://forms.gle"
+            href="mailto:utdallasais@gmail.com"
             className="join-btn"
             style={{ marginTop: 36, fontSize: 16, padding: "13px 36px", animation: "fadeUp 0.38s cubic-bezier(0.16,1,0.3,1) 280ms both" }}
           >
@@ -802,7 +805,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 18 }}>Contact</div>
             <a
-              href="mailto:ais@utdallas.edu"
+              href="mailto:utdallasais@gmail.com"
               style={{ color: "var(--text-secondary)", fontSize: 14, textDecoration: "none", display: "block", marginBottom: 8, transition: "color 0.15s" }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--accent)")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)")}
@@ -819,7 +822,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
           <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
             © 2026 Association for Information Systems UTD. All rights reserved.
           </span>
-          <a href="https://forms.gle" className="join-btn" style={{ fontSize: 13, padding: "7px 18px" }}>Get Involved</a>
+          <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 13, padding: "7px 18px" }}>Get Involved</a>
         </div>
       </div>
     </footer>
@@ -911,7 +914,7 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
           </p>
 
           <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "330ms" }}>
-            <a href="https://forms.gle" className="join-btn" style={{ fontSize: 15, padding: "13px 28px" }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 15, padding: "13px 28px" }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
@@ -983,13 +986,13 @@ type LogoEntry =
   | { name: string; logoClass: "inline";    w: number }
 
 const COMPANIES: LogoEntry[] = [
-  { name: "Verizon",           logoClass: "svg",        src: "https://cdn.simpleicons.org/verizon/ffffff",       w: 92  },
+  { name: "Verizon",           logoClass: "svg",        src: logoVerizon,       w: 92  },
   { name: "Inogen",            logoClass: "png-solid",  src: logoInogen,                                         w: 100 },
   { name: "Delta Electronics", logoClass: "png-solid",  src: logoDelta,                                          w: 108 },
   { name: "Oracle",            logoClass: "inline",                                                               w: 100 },
   { name: "Sprouts",           logoClass: "png-solid",  src: logoSprouts,                                        w: 116 },
-  { name: "Goldman Sachs",     logoClass: "svg",        src: "https://cdn.simpleicons.org/goldmansachs/ffffff",  w: 116 },
-  { name: "Bank of America",   logoClass: "svg",        src: "https://cdn.simpleicons.org/bankofamerica/ffffff", w: 108 },
+  { name: "Goldman Sachs",     logoClass: "svg",        src: logoGoldman,  w: 116 },
+  { name: "Bank of America",   logoClass: "svg",        src: logoBofA, w: 108 },
 ]
 
 function CompaniesSection() {
@@ -1196,7 +1199,7 @@ function WhyJoinSection() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
-            <a href="https://forms.gle" className="join-btn" style={{ fontSize: 14 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 14 }}>
               Join today
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
@@ -1225,12 +1228,12 @@ function GetInvolvedSection() {
           Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
         </p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-          <a href="https://forms.gle" className="join-btn" style={{ fontSize: 16, padding: "14px 36px" }}>
+          <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 16, padding: "14px 36px" }}>
             Join AIS UTD
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
           <a
-            href="mailto:ais@utdallas.edu"
+            href="mailto:utdallasais@gmail.com"
             style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)", fontSize: 15, textDecoration: "none", transition: "color 0.18s" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)")}
@@ -1326,7 +1329,7 @@ function EventsPage() {
   }, [loading, hasMore])
 
   return (
-    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: 68, transition: "background-color 0.28s ease" }}>
+    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
       <div className="page-header">
         <div className="page-header-inner">
           <h1>Events</h1>
@@ -1422,7 +1425,7 @@ function initials(name: string) {
 function OfficersPage() {
   const gridRef = useReveal()
   return (
-    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: 68, transition: "background-color 0.28s ease" }}>
+    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
       <div className="page-header">
         <div className="page-header-inner">
           <h1>Officers</h1>
@@ -1486,7 +1489,7 @@ function ContactSocialBtn({ label, href, icon }: { label: string; href: string; 
 function ContactPage() {
   const ref = useReveal()
   return (
-    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: 68, transition: "background-color 0.28s ease" }}>
+    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
       <div className="page-header">
         <div className="page-header-inner">
           <h1>Contact</h1>
@@ -1506,7 +1509,7 @@ function ContactPage() {
             <div>
               <div style={{ color: "var(--text-secondary)", fontSize: 13, letterSpacing: "0.04em", marginBottom: 12 }}>General inquiries</div>
               <a
-                href="mailto:ais@utdallas.edu"
+                href="mailto:utdallasais@gmail.com"
                 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(20px, 3vw, 28px)", color: "var(--text-primary)", textDecoration: "none", letterSpacing: "-0.03em", transition: "color 0.18s", display: "inline-block" }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--accent)")}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)")}
@@ -1524,7 +1527,7 @@ function ContactPage() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>
-            <a href="https://forms.gle" className="join-btn" style={{ fontSize: 15, padding: "12px 28px", marginBottom: 28 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 15, padding: "12px 28px", marginBottom: 28 }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
