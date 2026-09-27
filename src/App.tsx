@@ -1185,7 +1185,7 @@ function LogoMark({ co }: { co: LogoEntry }) {
 function CompaniesSection() {
   const boxRef = useReveal()
   return (
-    <section className="companies-section" data-rail="44" style={{ padding: "38px 0 44px", borderBottom: "1px solid var(--border-subtle)" }}>
+    <section className="companies-section" style={{ padding: "38px 0 44px", borderBottom: "1px solid var(--border-subtle)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", textAlign: "center", marginBottom: 28 }}>
         <span style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.13em", fontFamily: "var(--font-body)", fontWeight: 600 }}>
           WHERE OUR STUDENTS HAVE WORKED
@@ -1216,7 +1216,7 @@ function CompaniesSection() {
 
 function StatsSection() {
   return (
-    <section data-rail="80" style={{ background: "var(--bg-primary)", transition: "background-color 0.28s ease" }}>
+    <section style={{ background: "var(--bg-primary)", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div className="stats-grid">
           {[
@@ -1247,7 +1247,7 @@ function WhatWeDoSection() {
   const headRef = useReveal()
   const gridRef = useReveal()
   return (
-    <section className="panel-section" data-rail="128" style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
+    <section className="panel-section" data-rail style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 64 }}>
@@ -1285,7 +1285,7 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
   const headRef = useReveal()
   const gridRef = useReveal()
   return (
-    <section data-rail="128" style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
+    <section data-rail style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, flexWrap: "wrap", gap: 20 }}>
           <div>
@@ -1336,7 +1336,7 @@ function WhyJoinSection() {
   const headRef = useReveal()
   const bentoRef = useReveal()
   return (
-    <section data-rail="128" style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section data-rail style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 56 }}>
@@ -1385,7 +1385,7 @@ function WhyJoinSection() {
 function GetInvolvedSection() {
   const ref = useReveal()
   return (
-    <section className="glow-cta-section" data-rail="150">
+    <section className="glow-cta-section" data-rail>
       <div ref={ref} className="reveal" style={{ position: "relative", zIndex: 1, maxWidth: 680, margin: "0 auto" }}>
         <div className="cta-rule" />
         <h2 className="section-heading" style={{ fontSize: "clamp(34px, 5.5vw, 58px)", margin: "0 0 20px", lineHeight: 1.03 }}>
@@ -1545,9 +1545,13 @@ function StatHandoff() {
 
 /* ─────────────────────────────────────────────────────────
    Signal rail
-   A line down the left gutter with a travelling head. Each `[data-rail]`
-   section gets a node that lights as the head reaches it, and its heading
-   flashes amber for a beat. The value is the node's offset in px.
+   A line down the left gutter with a travelling head. `[data-rail]` marks
+   a section whose top edge is a genuine background-color change from the
+   section before it — sections sit flush in normal flow, so that edge is
+   exactly where the page break reads. A node sits there, lights as the
+   head reaches it, and the section's heading flashes amber for a beat.
+   Sections that don't change the background (e.g. two in a row sharing
+   --bg-primary) carry no marker: a dot with nothing to mark would lie.
 ───────────────────────────────────────────────────────── */
 
 function SignalRail() {
@@ -1601,14 +1605,21 @@ function SignalRail() {
       const mainTop = main.getBoundingClientRect().top + window.scrollY
       total = Math.max(1, main.offsetHeight)
       targets = Array.from(main.querySelectorAll<HTMLElement>("[data-rail]"))
-      ys = targets.map((t) => t.getBoundingClientRect().top + window.scrollY - mainTop + (parseFloat(t.dataset.rail || "0") || 0))
+      ys = targets.map((t) => t.getBoundingClientRect().top + window.scrollY - mainTop)
       const height = `${total}px`
       rail.querySelectorAll<HTMLElement>(".rail-track, .rail-fill").forEach((el) => (el.style.height = height))
-      setNodes((prev) => (prev.length === ys.length && prev.every((v, i) => Math.abs(v - ys[i]) < 1) ? prev : ys))
+      // Always commit the fresh read — web-font swap can drift the page by a
+      // few px per section without changing main's own box enough to be
+      // sure a ResizeObserver catches it, and a stale node reads as wrong.
+      setNodes(ys)
       schedule()
     }
 
     measure()
+    // Custom fonts load after first paint (font-display: swap); a fallback
+    // face has different metrics, so headings and body copy resettle once
+    // the real face is in. Remeasure the instant that's done.
+    document.fonts.ready.then(measure)
     const ro = new ResizeObserver(measure)
     ro.observe(main)
     window.addEventListener("scroll", schedule, { passive: true })
