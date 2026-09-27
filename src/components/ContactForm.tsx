@@ -141,12 +141,12 @@ export default function ContactForm({ onClose, source = "website", inline = fals
         <h2
           id="contact-form-title"
           style={{
-            fontFamily: "var(--font-display)",
+            fontFamily: "var(--font-headline)",
             fontWeight: 700,
             fontSize: 24,
             color: "var(--text-primary)",
             margin: "0 0 8px",
-            letterSpacing: "-0.025em",
+            letterSpacing: "-0.01em",
           }}
         >
           Get Involved

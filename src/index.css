@@ -11,9 +11,22 @@
    heading (see .accent-italic). Not a body or display face. */
 @font-face { font-family: 'Italiana'; src: url('/fonts/italiana-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 
+/* Classic serif display — already self-hosted for the Officers "AIS Times"
+   page (see officers.css); declared here too so the main site's headline
+   face (--font-headline) doesn't depend on that page loading first. */
+@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
+
 @theme inline {
+  /* Compact UI voice: nav wordmark, buttons, tags, big numeric stats.
+     Never prose — anything a reader would call a "headline" uses
+     --font-headline instead. */
   --font-display: 'Clash Display', sans-serif;
   --font-body: 'General Sans', sans-serif;
+  /* Headline voice: hero, section headings, page titles, card titles —
+     any content headline. Classic serif in place of the geometric sans. */
+  --font-headline: 'Playfair Display', Georgia, serif;
   --font-accent: 'Italiana', serif;
 }
 
@@ -71,18 +84,18 @@
 }
 
 [data-theme="light"] {
-  --bg-primary:   #F4F6FA;
-  --bg-secondary: #FFFFFF;
-  --bg-elevated:  #ECF0F7;
-  --bg-footer:    #E6EAF2;
+  --bg-primary:   #F7F4EC;
+  --bg-secondary: #FDFCF8;
+  --bg-elevated:  #F1ECDD;
+  --bg-footer:    #EAE3D0;
   --bg-panel:     #E7EBDA;
 
-  --text-primary:   #111827;
-  --text-secondary: #4A5568;
-  --text-muted:     #5F6B7E;
+  --text-primary:   #1C1810;
+  --text-secondary: #5C5344;
+  --text-muted:     #7A7160;
 
-  --border-subtle: rgba(15,23,42,0.09);
-  --border-faint:  rgba(15,23,42,0.05);
+  --border-subtle: rgba(40,32,20,0.10);
+  --border-faint:  rgba(40,32,20,0.05);
 
   /* Amber fills carry dark text; amber used AS text steps down to a readable brown-gold */
   --accent:       #C97D00;
@@ -99,12 +112,12 @@
   --danger:  #B91C1C;
   --success: #15803D;
 
-  --grid-line: rgba(15,23,42,0.04);
+  --grid-line: rgba(40,32,20,0.04);
   --spot-color: rgba(201, 125, 0, 0.10);
 
-  --nav-scrolled-bg:  rgba(244,246,250,0.93);
-  --nav-default-bg:   rgba(244,246,250,0.2);
-  --nav-border-color: rgba(15,23,42,0.09);
+  --nav-scrolled-bg:  rgba(247,244,236,0.93);
+  --nav-default-bg:   rgba(247,244,236,0.2);
+  --nav-border-color: rgba(40,32,20,0.09);
 
   --logo-filter:        brightness(0) contrast(1.1);
   --logo-opacity:       0.75;
@@ -495,7 +508,7 @@ input, textarea, select { accent-color: var(--accent); }
 }
 
 .email-link {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-weight: 700;
   font-size: clamp(20px, 3vw, 28px);
   color: var(--text-primary);
@@ -503,7 +516,7 @@ input, textarea, select { accent-color: var(--accent); }
   text-decoration-color: transparent;
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
   display: inline-block;
   transition: color 0.18s, text-decoration-color 0.25s;
 }
@@ -687,11 +700,11 @@ html.theme-switching *::after { transition: none !important; }
 /* Headline: each line rises out of its own mask. Padding and
    negative margin keep descenders and tight tracking unclipped. */
 .hero-title {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-weight: 700;
   font-size: clamp(46px, 5.8vw, 76px);
   line-height: 1.02;
-  letter-spacing: -0.042em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   margin: 0 0 22px;
 }
@@ -866,10 +879,10 @@ html.theme-switching *::after { transition: none !important; }
 }
 .page-header-inner { max-width: 1200px; margin: 0 auto; }
 .page-header h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-weight: 700;
   font-size: clamp(34px, 5vw, 54px);
-  letter-spacing: -0.042em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   margin: 0 0 10px;
   line-height: 1.06;
@@ -924,9 +937,9 @@ html.theme-switching *::after { transition: none !important; }
 /* ─── Section heading ───────────────────────────────────── */
 
 .section-heading {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-weight: 700;
-  letter-spacing: -0.038em;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
   line-height: 1.06;
   margin: 0;
@@ -1089,10 +1102,10 @@ html.theme-switching *::after { transition: none !important; }
   color: var(--text-muted);
 }
 .event-card-title {
-  font-family: var(--font-display);
+  font-family: var(--font-headline);
   font-weight: 700;
   font-size: 19px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.005em;
   line-height: 1.18;
   color: var(--text-primary);
   margin: 0;

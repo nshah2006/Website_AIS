@@ -1261,7 +1261,7 @@ function WhatWeDoSection() {
             <div key={label} className="pillar-card fx-spot" data-tilt="1" style={{ "--i": i } as React.CSSProperties}>
               <div className="pillar-bg-icon"><BgIcon /></div>
               <div className="pillar-icon"><Icon /></div>
-              <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "var(--text-primary)", letterSpacing: "-0.025em", margin: "0 0 10px" }}>{label}</h3>
+              <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 22, color: "var(--text-primary)", letterSpacing: "-0.01em", margin: "0 0 10px" }}>{label}</h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.68, margin: 0 }}>{desc}</p>
             </div>
           ))}
@@ -1347,7 +1347,7 @@ function WhyJoinSection() {
         </div>
         <div ref={bentoRef} className="reveal-stagger bento-grid" style={{ "--step": "100ms" } as React.CSSProperties}>
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 0 } as React.CSSProperties}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.2 }}>Industry Access</h3>
+            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 14, lineHeight: 1.2 }}>Industry Access</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 24px", maxWidth: 420 }}>
               Direct access to 18+ leading companies through tech talks, recruiting panels, and company information sessions. Resume workshops and career prep from professionals who've been there.
             </p>
@@ -1363,7 +1363,7 @@ function WhyJoinSection() {
           <BentoStat target={8} label="Events every semester — workshops, talks, competitions, and socials" />
 
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 3 } as React.CSSProperties}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.2 }}>Open to Every Major</h3>
+            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 14, lineHeight: 1.2 }}>Open to Every Major</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
@@ -1768,7 +1768,7 @@ function EventsPage() {
                 )}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 16px 16px" }}>
                   <div style={{ color: "#A4B0C2", fontSize: 11, letterSpacing: "0.04em", marginBottom: 5 }}>{ev.date}</div>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "#F8F9FC", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{ev.name}</div>
+                  <div style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 16, color: "#F8F9FC", letterSpacing: "-0.005em", lineHeight: 1.2 }}>{ev.name}</div>
                   {ev.partner && <div style={{ color: "#A4B0C2", fontSize: 12, marginTop: 3 }}>with {ev.partner}</div>}
                 </div>
               </div>
@@ -1841,7 +1841,7 @@ function ContactPage() {
           </div>
 
           <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "36px 32px", transition: "background-color 0.28s ease, border-color 0.28s ease", "--i": 1 } as React.CSSProperties}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: "0 0 12px", lineHeight: 1.15 }}>Ready to join?</h2>
+            <h2 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 24, color: "var(--text-primary)", letterSpacing: "-0.01em", margin: "0 0 12px", lineHeight: 1.15 }}>Ready to join?</h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>
