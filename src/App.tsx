@@ -5,6 +5,8 @@ import logoInogen from "./assets/logo-1.png"
 import logoSprouts from "./assets/logo-2.png"
 import logoDelta from "./assets/logo-3.png"
 import ContactForm from "./components/ContactForm"
+import OfficersPage from "./components/OfficersPage"
+import { useReveal } from "./hooks/useReveal"
 import logoVerizon from "./assets/logo-verizon.svg"
 import logoGoldman from "./assets/logo-goldmansachs.svg"
 import logoBofA from "./assets/logo-bankofamerica.svg"
@@ -477,30 +479,6 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
       style={{ width: "100%", height: "100%", display: "block" }}
     />
   )
-}
-
-/* ─────────────────────────────────────────────────────────
-   Scroll-reveal hook
-───────────────────────────────────────────────────────── */
-
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          el.classList.add("visible")
-          obs.disconnect()
-        }
-      },
-      { threshold: 0.1 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  return ref
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -1733,63 +1711,6 @@ function EventsPage() {
             All {ALL_EVENTS.length} events loaded
           </p>
         )}
-      </div>
-    </main>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────
-   Officers Page
-───────────────────────────────────────────────────────── */
-
-const OFFICERS = [
-  { name: "Sarah Kim", title: "President" },
-  { name: "Marcus Johnson", title: "VP of Operations" },
-  { name: "Priya Patel", title: "VP of Finance" },
-  { name: "Jake Torres", title: "VP of Marketing" },
-  { name: "Emily Chen", title: "VP of Technology" },
-  { name: "Derek Williams", title: "VP of External Affairs" },
-  { name: "Aisha Brown", title: "Director of Events" },
-  { name: "Ryan Nguyen", title: "Director of Design" },
-  { name: "Sophia Davis", title: "Director of Recruiting" },
-  { name: "Alex Park", title: "Historian" },
-  { name: "Tanya Okafor", title: "Webmaster" },
-  { name: "Carlos Mendez", title: "Industry Relations" },
-]
-
-const AVATAR_HUE = [210, 220, 230, 215, 205, 218, 225, 212, 208, 222, 216, 213]
-
-function initials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("")
-}
-
-function OfficersPage() {
-  const gridRef = useReveal()
-  return (
-    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
-      <div className="page-header">
-        <div className="page-header-inner">
-          <h1>Officers</h1>
-          <p>Meet the team leading AIS UTD this semester.</p>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "52px 24px 80px" }}>
-        <div ref={gridRef} className="officers-grid reveal-stagger" style={{ "--step": "45ms" } as React.CSSProperties}>
-          {OFFICERS.map((o, i) => (
-            <div key={o.name} className="officer-card fx-spot" data-tilt="0.7" style={{ "--i": i } as React.CSSProperties}>
-              <div className="officer-avatar" style={{ width: "100%", aspectRatio: "1/1", background: `hsl(${AVATAR_HUE[i % AVATAR_HUE.length]},30%,var(--avatar-bg-l,18%))`, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-subtle)" }}>
-                <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 28, color: `hsl(${AVATAR_HUE[i % AVATAR_HUE.length]},28%,var(--avatar-text-l,58%))`, letterSpacing: "0.02em" }}>
-                  {initials(o.name)}
-                </span>
-              </div>
-              <div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 4 }}>{o.name}</div>
-                <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{o.title}</div>
-              </div>
-              <div className="officer-rule" />
-            </div>
-          ))}
-        </div>
       </div>
     </main>
   )

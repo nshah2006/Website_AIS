@@ -1017,11 +1017,6 @@ html.theme-switching *::after { transition: none !important; }
   text-align: center;
   background: var(--bg-elevated);
 }
-.officer-avatar {
-  translate: calc(var(--cx, 0) * 5px) calc(var(--cy, 0) * 5px);
-  transition: translate 0.4s var(--ease-out);
-}
-
 .bento-tile-stat .stat-big {
   translate: calc(var(--cx, 0) * 6px) calc(var(--cy, 0) * 6px);
   transition: translate 0.4s var(--ease-out);
@@ -1116,37 +1111,6 @@ html.theme-switching *::after { transition: none !important; }
   transform: scale(1.05);
 }
 
-/* ─── Officer cards ─────────────────────────────────────── */
-
-.officer-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  transition:
-    transform 0.28s var(--ease-out),
-    border-color 0.2s,
-    box-shadow 0.35s var(--ease-out),
-    background-color 0.28s ease;
-}
-.officer-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.26);
-  transform: translateY(-3px);
-  box-shadow: 0 18px 34px -24px rgba(0, 0, 0, 0.5);
-}
-.officer-rule {
-  height: 1.5px;
-  background: linear-gradient(to right, rgba(var(--accent-rgb), 0.7), transparent);
-  border-radius: 1px;
-  transform: scaleX(0.35);
-  transform-origin: left;
-  transition: transform 0.5s var(--ease-out);
-}
-.officer-card:hover .officer-rule { transform: scaleX(1); }
-
 /* ─── Responsive grids ──────────────────────────────────── */
 
 .stats-grid {
@@ -1164,12 +1128,6 @@ html.theme-switching *::after { transition: none !important; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
   gap: 18px;
-}
-
-.officers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 14px;
 }
 
 /* ─── Contact page layout ───────────────────────────────── */
