@@ -1,13 +1,8 @@
 {
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
-  "installCommand": "pnpm install && pip install -r requirements.txt",
+  "installCommand": "pnpm install",
   "framework": "vite",
-  "functions": {
-    "api/main.py": {
-      "runtime": "python3.11"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",

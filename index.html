@@ -10,6 +10,8 @@
     <link rel="preload" href="/fonts/general-sans-400.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       (function(){
+        /* Scroll reveals only hide content once JS is confirmed running */
+        document.documentElement.classList.add('js-anim');
         try {
           var t = localStorage.getItem('ais-theme');
           if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

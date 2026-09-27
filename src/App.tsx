@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { flushSync } from "react-dom"
 import aisLogo from "./assets/ais-logo.png"
 import logoInogen from "./assets/logo-1.png"
 import logoSprouts from "./assets/logo-2.png"
@@ -42,7 +43,9 @@ function useTheme(): [Theme, (t: Theme) => void] {
 /* ─────────────────────────────────────────────────────────
    Immersion effects: scroll parallax + cursor tracking
    [data-parallax="speed"]  drifts against scroll (negative = lags behind)
-   .fx-spot                 cursor spotlight (--mx/--my); [data-tilt] adds 3D tilt
+   .fx-spot                 cursor spotlight (--mx/--my); [data-tilt="k"] adds 3D tilt
+                            scaled by k, plus --cx/--cy (-1..1) for inner depth shifts
+   [data-magnetic]          buttons drift toward a nearby cursor (--tx/--ty)
    [data-mouse]             tracks pointer position (--mxn/--myn, -1..1)
 ───────────────────────────────────────────────────────── */
 
@@ -77,8 +80,15 @@ function useImmersion(page: Page) {
     let py = 0
 
     const resetTilt = (el: HTMLElement) => {
-      el.style.removeProperty("--rx")
-      el.style.removeProperty("--ry")
+      for (const v of ["--rx", "--ry", "--cx", "--cy"]) el.style.removeProperty(v)
+    }
+
+    const setMagnet = (m: HTMLElement, x: number, y: number) => {
+      if (m.dataset.mx === String(x) && m.dataset.my === String(y)) return
+      m.dataset.mx = String(x)
+      m.dataset.my = String(y)
+      m.style.setProperty("--tx", `${x}px`)
+      m.style.setProperty("--ty", `${y}px`)
     }
 
     const applyPointer = () => {
@@ -93,10 +103,30 @@ function useImmersion(page: Page) {
         el.style.setProperty("--mx", `${x}px`)
         el.style.setProperty("--my", `${y}px`)
         if (el.hasAttribute("data-tilt")) {
-          el.style.setProperty("--ry", `${(x / r.width - 0.5) * 10}deg`)
-          el.style.setProperty("--rx", `${-(y / r.height - 0.5) * 8}deg`)
+          const k = parseFloat(el.dataset.tilt || "1") || 1
+          const nx = (x / r.width - 0.5) * 2
+          const ny = (y / r.height - 0.5) * 2
+          el.style.setProperty("--ry", `${nx * 5 * k}deg`)
+          el.style.setProperty("--rx", `${-ny * 4 * k}deg`)
+          el.style.setProperty("--cx", nx.toFixed(3))
+          el.style.setProperty("--cy", ny.toFixed(3))
         }
       }
+
+      // Magnetic buttons: pull toward the cursor within reach, ease back outside it
+      document.querySelectorAll<HTMLElement>("[data-magnetic]").forEach((m) => {
+        const r = m.getBoundingClientRect()
+        const cx = r.left + r.width / 2 - parseFloat(m.dataset.mx || "0")
+        const cy = r.top + r.height / 2 - parseFloat(m.dataset.my || "0")
+        const dx = px - cx
+        const dy = py - cy
+        const reach = Math.max(r.width, r.height) / 2 + 80
+        if (Math.hypot(dx, dy) < reach) {
+          setMagnet(m, Math.round(Math.max(-10, Math.min(10, dx * 0.3))), Math.round(Math.max(-8, Math.min(8, dy * 0.3))))
+        } else {
+          setMagnet(m, 0, 0)
+        }
+      })
       const nx = (px / window.innerWidth - 0.5) * 2
       const ny = (py / window.innerHeight - 0.5) * 2
       document.querySelectorAll<HTMLElement>("[data-mouse]").forEach((m) => {
@@ -116,6 +146,7 @@ function useImmersion(page: Page) {
     const onLeave = () => {
       if (active) resetTilt(active)
       active = null
+      document.querySelectorAll<HTMLElement>("[data-magnetic]").forEach((m) => setMagnet(m, 0, 0))
       document.querySelectorAll<HTMLElement>("[data-mouse]").forEach((m) => {
         m.style.setProperty("--mxn", "0")
         m.style.setProperty("--myn", "0")
@@ -188,30 +219,51 @@ const VIZ_EDGES: VizEdge[] = [
   { from: 6, to: 7, signal: 0.6, speed: 0.0018 },
 ]
 
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+
+/* Hero → stats handoff. Four graph nodes peel off as you scroll and fly to
+   the four stat cells (Community→Members, Workshops→Events, Business→Partner
+   companies, Networking→Participants). The overlay writes per-node progress
+   here; the hero canvas reads it to dim the nodes that have left. */
+const HANDOFF_NODES = [6, 7, 2, 4]
+const STAT_OF_NODE: Record<number, number> = Object.fromEntries(HANDOFF_NODES.map((n, k) => [n, k]))
+const handoff = { p: [0, 0, 0, 0], active: false }
+const HERO_CONTRACT = 0.38
+const collapseAt = () => clamp01(window.scrollY / (window.innerHeight * 0.9))
+
+/* Timings (ms) for the assemble-on-load sequence */
+const INTRO_DELAY = 450
+const NODE_STAGGER = 120
+const NODE_DURATION = 650
+
 function HeroVizCanvas({ theme }: { theme: Theme }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const frameRef = useRef(0)
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const edgesRef = useRef(VIZ_EDGES.map((e) => ({ ...e })))
+  // Smoothed 0..1 hover amount per node, so proximity eases instead of snapping
+  const hoverRef = useRef(VIZ_NODES.map(() => 0))
+  // Survives theme switches so the intro never replays
+  const startRef = useRef<number | null>(null)
 
   const isDark = theme === "dark"
 
   // Color palette per theme
   const C = isDark
     ? {
-        edge: "rgba(164,176,194,0.10)",
+        edge: "rgba(164,176,194,0.14)",
         nodeFill: (near: boolean) =>
           near ? "rgba(248,174,53,0.10)" : "rgba(25,36,54,0.75)",
         nodeStroke: (near: boolean) =>
-          near ? "rgba(248,174,53,0.5)" : "rgba(164,176,194,0.2)",
+          near ? "rgba(248,174,53,0.5)" : "rgba(164,176,194,0.24)",
         dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(248,174,53,0.88)" : "rgba(164,176,194,0.5)",
+          center || near ? "rgba(248,174,53,0.88)" : "rgba(164,176,194,0.55)",
         label: (center: boolean, near: boolean) =>
           center
-            ? "rgba(248,174,53,0.9)"
+            ? "rgba(248,174,53,0.95)"
             : near
-              ? "rgba(248,174,53,0.72)"
-              : "rgba(164,176,194,0.55)",
+              ? "rgba(248,174,53,0.85)"
+              : "rgba(164,176,194,0.72)",
         ringOuter: (a: number) => `rgba(248,174,53,${a})`,
         ringInner: "rgba(248,174,53,0.2)",
         signalGlow0: "rgba(45,212,191,0.24)",
@@ -220,19 +272,19 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         centerStroke: "rgba(248,174,53,0.68)",
       }
     : {
-        edge: "rgba(60,80,130,0.12)",
+        edge: "rgba(60,80,130,0.16)",
         nodeFill: (near: boolean) =>
           near ? "rgba(201,125,0,0.10)" : "rgba(236,240,247,0.85)",
         nodeStroke: (near: boolean) =>
-          near ? "rgba(201,125,0,0.5)" : "rgba(80,100,150,0.22)",
+          near ? "rgba(201,125,0,0.5)" : "rgba(80,100,150,0.26)",
         dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(201,125,0,0.9)" : "rgba(80,100,150,0.45)",
+          center || near ? "rgba(201,125,0,0.9)" : "rgba(80,100,150,0.5)",
         label: (center: boolean, near: boolean) =>
           center
-            ? "rgba(201,125,0,0.9)"
+            ? "rgba(146,87,0,1)"
             : near
-              ? "rgba(201,125,0,0.75)"
-              : "rgba(50,70,110,0.6)",
+              ? "rgba(146,87,0,0.9)"
+              : "rgba(50,70,110,0.78)",
         ringOuter: (a: number) => `rgba(201,125,0,${a})`,
         ringInner: "rgba(201,125,0,0.18)",
         signalGlow0: "rgba(15,139,141,0.22)",
@@ -248,34 +300,65 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
     if (!ctx) return
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    let W = 0
+    let H = 0
 
     const init = () => {
-      canvas.width = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      W = canvas.offsetWidth
+      H = canvas.offsetHeight
+      canvas.width = W * dpr
+      canvas.height = H * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     init()
     const ro = new ResizeObserver(init)
     ro.observe(canvas)
 
+    let raf = 0
+    let last = 0
+    let running = false
+
     const tick = (ts: number) => {
-      const { width: W, height: H } = canvas
+      raf = requestAnimationFrame(tick)
+      if (!W || !H) return
+      if (startRef.current === null) startRef.current = ts
+      const dt = Math.min(ts - last || 16.7, 50)
+      last = ts
+      const frame = dt / 16.7
+      const elapsed = ts - startRef.current
+
       ctx.clearRect(0, 0, W, H)
       const t = ts * 0.001
-      const { x: mx, y: my } = mouseRef.current
+      // Pointer is stored in viewport space so hover stays correct while the page scrolls
+      const box = canvas.getBoundingClientRect()
+      const mx = mouseRef.current.x - box.left
+      const my = mouseRef.current.y - box.top
       const edges = edgesRef.current
+      const hover = hoverRef.current
 
+      // Per-node intro progress: the graph grows outward from the centre
+      const prog = VIZ_NODES.map((_, i) =>
+        reduced ? 1 : easeOut(clamp01((elapsed - INTRO_DELAY - i * NODE_STAGGER) / NODE_DURATION)),
+      )
+
+      // Scrolling out of the hero pulls the graph in toward its centre
+      const col = reduced ? 0 : collapseAt()
+      const k = 1 - HERO_CONTRACT * col
       const pos = VIZ_NODES.map((n) => ({
-        x: n.cx * W + (reduced ? 0 : Math.sin(t * 0.28 + n.phase) * 8),
-        y: n.cy * H + (reduced ? 0 : Math.cos(t * 0.22 + n.phase * 1.2) * 7),
+        x: (0.5 + (n.cx - 0.5) * k) * W + (reduced ? 0 : Math.sin(t * 0.28 + n.phase) * 8),
+        y: (0.5 + (n.cy - 0.5) * k) * H + (reduced ? 0 : Math.cos(t * 0.22 + n.phase * 1.2) * 7),
       }))
+      const fade = 1 - 0.5 * col
 
-      if (!reduced) {
-        for (const e of edges) e.signal = (e.signal + e.speed) % 1
-      }
+      VIZ_NODES.forEach((_, i) => {
+        const near = Math.hypot(mx - pos[i].x, my - pos[i].y) < 90 ? 1 : 0
+        hover[i] += (near - hover[i]) * Math.min(1, 0.18 * frame)
+      })
 
       // Outer glow ring
       const cr = pos[0]
-      const ringAlpha = 0.07 + Math.sin(t * 1.6) * 0.03
+      const ringAlpha = (0.07 + Math.sin(t * 1.6) * 0.03) * prog[0]
       const ringR = VIZ_NODES[0].r + 14 + Math.sin(t * 1.6) * 4
       ctx.beginPath()
       ctx.arc(cr.x, cr.y, ringR, 0, Math.PI * 2)
@@ -285,20 +368,27 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
       ctx.beginPath()
       ctx.arc(cr.x, cr.y, VIZ_NODES[0].r + 9, 0, Math.PI * 2)
       ctx.strokeStyle = C.ringInner
+      ctx.globalAlpha = prog[0]
       ctx.lineWidth = 1
       ctx.stroke()
+      ctx.globalAlpha = 1
 
-      // Edges
+      // Edges: draw out from the earlier node once both ends exist
       for (const e of edges) {
+        const grown = Math.min(prog[e.from], prog[e.to])
+        if (grown <= 0) continue
         const p1 = pos[e.from], p2 = pos[e.to]
+        const gone = Math.max(STAT_OF_NODE[e.from] === undefined ? 0 : handoff.p[STAT_OF_NODE[e.from]], STAT_OF_NODE[e.to] === undefined ? 0 : handoff.p[STAT_OF_NODE[e.to]])
+        ctx.globalAlpha = fade * (1 - 0.85 * gone)
         ctx.beginPath()
         ctx.moveTo(p1.x, p1.y)
-        ctx.lineTo(p2.x, p2.y)
+        ctx.lineTo(p1.x + (p2.x - p1.x) * grown, p1.y + (p2.y - p1.y) * grown)
         ctx.strokeStyle = C.edge
         ctx.lineWidth = 0.9
         ctx.stroke()
 
-        if (!reduced) {
+        if (!reduced && grown >= 1) {
+          e.signal = (e.signal + e.speed * frame) % 1
           const sx = p1.x + (p2.x - p1.x) * e.signal
           const sy = p1.y + (p2.y - p1.y) * e.signal
           const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 9)
@@ -313,30 +403,27 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
           ctx.fillStyle = C.signalDot
           ctx.fill()
         }
+        ctx.globalAlpha = 1
       }
 
       // Nodes
       VIZ_NODES.forEach((n, i) => {
+        const gone = STAT_OF_NODE[i] === undefined ? 0 : handoff.p[STAT_OF_NODE[i]]
+        const p = prog[i] * fade * (1 - 0.9 * gone)
+        if (p <= 0) return
         const { x, y } = pos[i]
-        const near = Math.hypot(mx - x, my - y) < 90
+        const h = hover[i]
+        const near = h > 0.5
+        const r = n.r * (0.4 + 0.6 * prog[i]) * (1 + h * 0.18)
 
-        if (n.isCenter) {
-          ctx.beginPath()
-          ctx.arc(x, y, n.r, 0, Math.PI * 2)
-          ctx.fillStyle = C.centerFill
-          ctx.fill()
-          ctx.strokeStyle = C.centerStroke
-          ctx.lineWidth = 1.5
-          ctx.stroke()
-        } else {
-          ctx.beginPath()
-          ctx.arc(x, y, n.r, 0, Math.PI * 2)
-          ctx.fillStyle = C.nodeFill(near)
-          ctx.fill()
-          ctx.strokeStyle = C.nodeStroke(near)
-          ctx.lineWidth = 1
-          ctx.stroke()
-        }
+        ctx.globalAlpha = p
+        ctx.beginPath()
+        ctx.arc(x, y, r, 0, Math.PI * 2)
+        ctx.fillStyle = n.isCenter ? C.centerFill : C.nodeFill(near)
+        ctx.fill()
+        ctx.strokeStyle = n.isCenter ? C.centerStroke : C.nodeStroke(near)
+        ctx.lineWidth = n.isCenter ? 1.5 : 1
+        ctx.stroke()
 
         ctx.beginPath()
         ctx.arc(x, y, n.isCenter ? 4.5 : 2.8, 0, Math.PI * 2)
@@ -344,27 +431,39 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         ctx.fill()
 
         ctx.font = n.isCenter
-          ? "600 11px system-ui,sans-serif"
-          : "400 10px system-ui,sans-serif"
+          ? "600 12px 'General Sans', system-ui, sans-serif"
+          : "500 11px 'General Sans', system-ui, sans-serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
         ctx.fillStyle = C.label(!!n.isCenter, near)
-        ctx.fillText(n.label, x, y + n.r + 5)
+        ctx.fillText(n.label, x, y + r + 5)
+        ctx.globalAlpha = 1
       })
-
-      frameRef.current = requestAnimationFrame(tick)
     }
 
-    frameRef.current = requestAnimationFrame(tick)
+    const start = () => {
+      if (running) return
+      running = true
+      last = 0
+      raf = requestAnimationFrame(tick)
+    }
+    const stop = () => {
+      running = false
+      cancelAnimationFrame(raf)
+    }
+
+    // Only animate while on screen (also skips the hidden mobile canvas)
+    const io = new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop()))
+    io.observe(canvas)
 
     const onMove = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect()
-      mouseRef.current = { x: e.clientX - r.left, y: e.clientY - r.top }
+      mouseRef.current = { x: e.clientX, y: e.clientY }
     }
     window.addEventListener("mousemove", onMove, { passive: true })
 
     return () => {
-      cancelAnimationFrame(frameRef.current)
+      stop()
+      io.disconnect()
       ro.disconnect()
       window.removeEventListener("mousemove", onMove)
     }
@@ -555,8 +654,41 @@ function Nav({
     return () => { document.body.style.overflow = "" }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
+    window.addEventListener("keydown", h)
+    return () => window.removeEventListener("keydown", h)
+  }, [open])
+
   const isDark = theme === "dark"
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark")
+
+  // Theme change spreads outward from the toggle as a circular reveal (View
+  // Transitions); browsers without support, or reduced motion, just swap.
+  const toggleTheme = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const next: Theme = isDark ? "light" : "dark"
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } }
+    if (!doc.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setTheme(next)
+      return
+    }
+    const box = e.currentTarget.getBoundingClientRect()
+    const x = box.left + box.width / 2
+    const y = box.top + box.height / 2
+    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+    const root = document.documentElement
+    root.classList.add("theme-switching")
+    const vt = doc.startViewTransition(() => flushSync(() => setTheme(next)))
+    vt.ready
+      .then(() =>
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 700, easing: "cubic-bezier(0.16, 1, 0.3, 1)", pseudoElement: "::view-transition-new(root)" },
+        ),
+      )
+      .catch(() => {})
+    vt.finished.finally(() => root.classList.remove("theme-switching"))
+  }
 
   const navBg = scrolled
     ? "var(--nav-scrolled-bg)"
@@ -579,6 +711,7 @@ function Nav({
           transition: "background 0.35s, backdrop-filter 0.35s, border-color 0.35s",
         }}
       >
+        <span className="scroll-progress" aria-hidden />
         <div
           style={{
             maxWidth: 1200,
@@ -592,6 +725,7 @@ function Nav({
         >
           {/* Logo */}
           <button
+            className="nav-logo"
             onClick={() => setPage("home")}
             aria-label="AIS UTD — go to home"
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
@@ -636,7 +770,7 @@ function Nav({
 
             {/* Hamburger — mobile only */}
             <button
-              className="sm:hidden"
+              className="flex sm:hidden"
               onClick={() => setOpen(!open)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -647,7 +781,6 @@ function Nav({
                 cursor: "pointer",
                 width: 38,
                 height: 38,
-                display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
@@ -710,7 +843,7 @@ function Nav({
                 fontWeight: 700,
                 fontSize: "clamp(26px, 8vw, 40px)",
                 letterSpacing: "-0.03em",
-                color: page === l.page ? "var(--accent)" : "var(--text-primary)",
+                color: page === l.page ? "var(--accent-text)" : "var(--text-primary)",
                 padding: "8px 0",
                 transition: "color 0.15s",
                 animation: `fadeUp 0.38s cubic-bezier(0.16,1,0.3,1) ${60 + i * 55}ms both`,
@@ -737,26 +870,8 @@ function Nav({
 ───────────────────────────────────────────────────────── */
 
 function SocialBtn({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
-  const [h, setH] = useState(false)
   return (
-    <a
-      href={href}
-      aria-label={label}
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
-      style={{
-        color: h ? "var(--accent)" : "var(--text-secondary)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 34,
-        height: 34,
-        border: `1px solid ${h ? "rgba(248,174,53,0.3)" : "var(--border-subtle)"}`,
-        borderRadius: 6,
-        transition: "color 0.15s, border-color 0.15s",
-        textDecoration: "none",
-      }}
-    >
+    <a href={href} aria-label={label} className="social-btn">
       {icon}
     </a>
   )
@@ -789,13 +904,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 18 }}>Pages</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {NAV_LINKS.map((l) => (
-                <button
-                  key={l.page}
-                  onClick={() => setPage(l.page)}
-                  style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", color: "var(--text-secondary)", fontSize: 14, fontFamily: "var(--font-body)", padding: 0, transition: "color 0.15s" }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--accent)")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)")}
-                >
+                <button key={l.page} onClick={() => setPage(l.page)} className="quiet-link">
                   {l.label}
                 </button>
               ))}
@@ -805,12 +914,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
           {/* Contact */}
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 18 }}>Contact</div>
-            <a
-              href="mailto:utdallasais@gmail.com"
-              style={{ color: "var(--text-secondary)", fontSize: 14, textDecoration: "none", display: "block", marginBottom: 8, transition: "color 0.15s" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--accent)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)")}
-            >
+            <a href="mailto:utdallasais@gmail.com" className="quiet-link" style={{ display: "block", marginBottom: 8 }}>
               ais@utdallas.edu
             </a>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, lineHeight: 1.55 }}>
@@ -834,42 +938,90 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
    Stat Counter
 ───────────────────────────────────────────────────────── */
 
-function StatCounter({ target, label, suffix = "+", delay = 0 }: { target: number; label: string; suffix?: string; delay?: number }) {
-  const [count, setCount] = useState(0)
+/* Counts up once the element scrolls into view and marks it `.visible`
+   so its reveal styles run. Reduced motion lands on the final value. */
+function useCountUp(target: number, delay = 0) {
   const ref = useRef<HTMLDivElement>(null)
-  const started = useRef(false)
+  const [count, setCount] = useState(0)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    let timer = 0
+    let fallback = 0
+    let raf = 0
+    let started = false
+    const begin = () => {
+      if (started) return
+      started = true
+      clearTimeout(fallback)
+      timer = window.setTimeout(() => {
+        const s = performance.now(), dur = 1600
+        const tick = (n: number) => {
+          const t = Math.min((n - s) / dur, 1)
+          setCount(Math.round((1 - Math.pow(1 - t, 4)) * target))
+          if (t < 1) raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+      }, delay)
+    }
     const obs = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting && !started.current) {
-          started.current = true
-          setTimeout(() => {
-            const s = performance.now(), dur = 1400
-            const tick = (n: number) => {
-              const t = Math.min((n - s) / dur, 1)
-              setCount(Math.round((1 - Math.pow(1 - t, 3)) * target))
-              if (t < 1) requestAnimationFrame(tick)
-            }
-            requestAnimationFrame(tick)
-          }, delay)
+        if (!e.isIntersecting) return
+        obs.disconnect()
+        el.classList.add("visible")
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          setCount(target)
+          return
+        }
+        // Stat cells wait for their signal from the hero graph to land
+        if (el.classList.contains("stat-cell") && handoff.active && !el.classList.contains("received")) {
+          el.addEventListener("received", begin, { once: true })
+          fallback = window.setTimeout(begin, 3000)
+        } else {
+          begin()
         }
       },
       { threshold: 0.3 },
     )
     obs.observe(el)
-    return () => obs.disconnect()
+    return () => {
+      obs.disconnect()
+      el.removeEventListener("received", begin)
+      clearTimeout(timer)
+      clearTimeout(fallback)
+      cancelAnimationFrame(raf)
+    }
   }, [target, delay])
 
+  return [ref, count] as const
+}
+
+function StatCounter({ target, label, suffix = "+", delay = 0 }: { target: number; label: string; suffix?: string; delay?: number }) {
+  const [ref, count] = useCountUp(target, delay)
+
   return (
-    <div ref={ref} className="reveal stat-cell">
-      <div className="stat-cell-number">
-        {count.toLocaleString()}
-        <span style={{ color: "var(--accent-2)" }}>{suffix}</span>
+    <div ref={ref} className="stat-cell" style={{ "--d": `${delay}ms` } as React.CSSProperties}>
+      <div className="stat-inner">
+        <div className="stat-cell-number">
+          {count.toLocaleString()}
+          <span style={{ color: "var(--accent-2)" }}>{suffix}</span>
+        </div>
+        <div className="stat-cell-label">{label}</div>
       </div>
-      <div className="stat-cell-label">{label}</div>
+    </div>
+  )
+}
+
+function BentoStat({ target, suffix = "", label }: { target: number; suffix?: string; label: string }) {
+  const [ref, count] = useCountUp(target)
+  return (
+    <div ref={ref} className="bento-tile bento-tile-stat fx-spot" data-tilt="0.45">
+      <div className="stat-big">
+        {count.toLocaleString()}
+        {suffix && <span style={{ color: "var(--accent-text)" }}>{suffix}</span>}
+      </div>
+      <div style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.55 }}>{label}</div>
     </div>
   )
 }
@@ -885,7 +1037,7 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
       <div aria-hidden data-parallax="-0.3" style={{
         position: "absolute", inset: 0,
         background: isDark
-          ? "radial-gradient(ellipse 55% 70% at 15% 50%, rgba(248,174,53,0.04) 0%, transparent 60%), radial-gradient(ellipse 70% 90% at 85% 30%, rgba(25,36,54,0.85) 0%, transparent 70%)"
+          ? "radial-gradient(ellipse 55% 70% at 15% 50%, rgba(var(--accent-rgb),0.04) 0%, transparent 60%), radial-gradient(ellipse 70% 90% at 85% 30%, rgba(25,36,54,0.85) 0%, transparent 70%)"
           : "radial-gradient(ellipse 55% 70% at 15% 50%, rgba(201,125,0,0.05) 0%, transparent 60%), radial-gradient(ellipse 70% 90% at 85% 30%, rgba(220,228,240,0.7) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
@@ -893,43 +1045,30 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
 
       <div className="hero-layout">
         <div className="hero-content" data-parallax="-0.08">
-          {/* Badge */}
-          <div
-            className="anim-fade-in"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", border: "1px solid rgba(248,174,53,0.28)", borderRadius: 100, background: "rgba(248,174,53,0.07)", animationDelay: "0ms" }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block", animation: "nodeBlink 2.4s ease-in-out infinite" }} />
-            <span style={{ color: "var(--accent)", fontSize: 12, letterSpacing: "0.07em", fontWeight: 500 }}>
-              Association for Information Systems · UT Dallas
+          <h1 className="hero-title">
+            <span className="hl"><span className="hl-in" style={{ "--d": "150ms" } as React.CSSProperties}>Where business</span></span>
+            <span className="hl">
+              <span className="hl-in" style={{ "--d": "280ms" } as React.CSSProperties}>
+                meets <span className="hl-accent">technology.</span>
+              </span>
             </span>
-          </div>
-
-          <h1 className="anim-fade-up" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(46px, 5.8vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.042em", color: "var(--text-primary)", margin: "0 0 22px", animationDelay: "90ms" }}>
-            Where business<br />
-            meets{" "}
-            <span style={{ color: "var(--accent)", position: "relative", display: "inline-block" }}>technology.</span>
           </h1>
 
-          <p className="anim-fade-up" style={{ color: "var(--text-secondary)", fontSize: "clamp(15px, 1.8vw, 17px)", lineHeight: 1.72, maxWidth: 500, margin: "0 0 38px", animationDelay: "210ms" }}>
-            AIS UTD is a UT Dallas student organization connecting information systems, business, and data — building skills, creating industry connections, and growing community. Open to every major.
+          <p className="anim-fade-up" style={{ color: "var(--text-secondary)", fontSize: "clamp(15px, 1.8vw, 17px)", lineHeight: 1.72, maxWidth: 500, margin: "0 0 38px", animationDelay: "650ms" }}>
+            AIS UTD is the Association for Information Systems at UT Dallas, a student organization connecting information systems, business, and data — building skills, creating industry connections, and growing community. Open to every major.
           </p>
 
-          <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "330ms" }}>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 15, padding: "13px 28px" }}>
+          <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "800ms" }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 15, padding: "13px 28px" }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
-            <button
-              onClick={() => setPage("events")}
-              style={{ background: "none", border: "1px solid var(--border-subtle)", color: "var(--text-primary)", fontFamily: "var(--font-body)", fontWeight: 500, fontSize: 15, padding: "13px 28px", borderRadius: 6, cursor: "pointer", transition: "border-color 0.18s, color 0.18s, background-color 0.28s ease" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(248,174,53,0.4)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)" }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-subtle)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)" }}
-            >
+            <button onClick={() => setPage("events")} className="ghost-btn">
               Explore Events
             </button>
           </div>
 
-          <div className="anim-fade-in sm:hidden" style={{ marginTop: 52, display: "flex", alignItems: "center", gap: 8, animationDelay: "500ms" }}>
+          <div className="anim-fade-in sm:hidden" style={{ marginTop: 52, display: "flex", alignItems: "center", gap: 8, animationDelay: "1100ms" }}>
             <div style={{ width: 24, height: 1, background: "var(--border-subtle)" }} />
             <span style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.1em" }}>SCROLL TO EXPLORE</span>
           </div>
@@ -937,13 +1076,13 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
 
         <div className="hero-viz-wrap" data-parallax="-0.2" data-mouse>
           <HeroVizCanvas theme={theme} />
-          <div aria-hidden style={{ position: "absolute", inset: -1, borderRadius: 16, background: "linear-gradient(135deg, rgba(248,174,53,0.06) 0%, transparent 50%, rgba(248,174,53,0.04) 100%)", pointerEvents: "none" }} />
+          <div aria-hidden style={{ position: "absolute", inset: -1, borderRadius: 16, background: "linear-gradient(135deg, rgba(var(--accent-rgb),0.06) 0%, transparent 50%, rgba(var(--accent-rgb),0.04) 100%)", pointerEvents: "none" }} />
         </div>
       </div>
 
       <div aria-hidden style={{ position: "absolute", bottom: 28, left: "50%", animation: "scrollBob 2.6s ease-in-out infinite, fadeIn 1s ease 1s both", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         <div style={{ width: 22, height: 34, border: "1.5px solid var(--border-subtle)", borderRadius: 11, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "5px 0" }}>
-          <div style={{ width: 2.5, height: 7, background: "rgba(248,174,53,0.55)", borderRadius: 2 }} />
+          <div style={{ width: 2.5, height: 7, background: "rgba(var(--accent-rgb),0.55)", borderRadius: 2 }} />
         </div>
       </div>
     </section>
@@ -997,17 +1136,18 @@ const COMPANIES: LogoEntry[] = [
 ]
 
 function CompaniesSection() {
+  const boxRef = useReveal()
   return (
-    <section className="companies-section" style={{ padding: "38px 0 44px", borderBottom: "1px solid var(--border-subtle)" }}>
+    <section className="companies-section" data-rail="44" style={{ padding: "38px 0 44px", borderBottom: "1px solid var(--border-subtle)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", textAlign: "center", marginBottom: 28 }}>
         <span style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.13em", fontFamily: "var(--font-body)", fontWeight: 600 }}>
           WHERE OUR STUDENTS HAVE WORKED
         </span>
       </div>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div className="companies-box">
-          {COMPANIES.map((co) => (
-            <span key={co.name} className="company-logo-slot" aria-label={co.name}>
+        <div ref={boxRef} className="companies-box reveal-stagger" style={{ "--step": "60ms" } as React.CSSProperties}>
+          {COMPANIES.map((co, i) => (
+            <span key={co.name} className="company-logo-slot" aria-label={co.name} style={{ "--i": i } as React.CSSProperties}>
               {co.logoClass === "inline" ? (
                 <OracleLogo w={co.w} />
               ) : (
@@ -1032,7 +1172,7 @@ function CompaniesSection() {
 
 function StatsSection() {
   return (
-    <section style={{ background: "var(--bg-primary)", transition: "background-color 0.28s ease" }}>
+    <section data-rail="80" style={{ background: "var(--bg-primary)", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div className="stats-grid">
           {[
@@ -1063,21 +1203,20 @@ function WhatWeDoSection() {
   const headRef = useReveal()
   const gridRef = useReveal()
   return (
-    <section style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section data-rail="128" style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div ref={headRef} className="reveal" style={{ textAlign: "center", marginBottom: 64 }}>
+        <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 64 }}>
           <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>What We Do</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 520, margin: "0 auto", lineHeight: 1.72 }}>
             Three pillars that define every AIS UTD experience — from your first meeting to your first offer.
           </p>
         </div>
-        <div ref={gridRef} className="reveal pillar-cards-grid">
-          {PILLARS.map(({ Icon, BgIcon, label, desc }) => (
-            <div key={label} className="pillar-card fx-spot" data-tilt>
+        <div ref={gridRef} className="reveal-stagger pillar-cards-grid" style={{ "--step": "110ms" } as React.CSSProperties}>
+          {PILLARS.map(({ Icon, BgIcon, label, desc }, i) => (
+            <div key={label} className="pillar-card fx-spot" data-tilt="1" style={{ "--i": i } as React.CSSProperties}>
               <div className="pillar-bg-icon"><BgIcon /></div>
               <div className="pillar-icon"><Icon /></div>
-              <div style={{ width: 32, height: 1.5, background: "rgba(248,174,53,0.35)", marginBottom: 16, borderRadius: 1 }} />
               <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, color: "var(--text-primary)", letterSpacing: "-0.025em", margin: "0 0 10px" }}>{label}</h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.68, margin: 0 }}>{desc}</p>
             </div>
@@ -1102,38 +1241,30 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
   const headRef = useReveal()
   const listRef = useReveal()
   return (
-    <section style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
+    <section data-rail="128" style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div ref={headRef} className="reveal" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, flexWrap: "wrap", gap: 20 }}>
+        <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, flexWrap: "wrap", gap: 20 }}>
           <div>
             <h2 className="section-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 8px" }}>Upcoming Events</h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>What's happening this semester at AIS UTD.</p>
           </div>
-          <button
-            onClick={() => setPage("events")}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", fontSize: 14, fontFamily: "var(--font-body)", display: "flex", alignItems: "center", gap: 6, transition: "gap 0.18s" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.gap = "10px")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.gap = "6px")}
-          >
+          <button onClick={() => setPage("events")} className="text-link">
             View All Events
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
         </div>
-        <div ref={listRef} className="reveal" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div ref={listRef} className="reveal-stagger" data-dir="x" style={{ display: "flex", flexDirection: "column", gap: 14, "--step": "90ms" } as React.CSSProperties}>
           {UPCOMING.map((ev, i) => (
-            <div key={ev.name} className="event-h-card fx-spot" style={{ transitionDelay: `${i * 70}ms` }}>
+            <div key={ev.name} className="event-h-card fx-spot" style={{ "--i": i } as React.CSSProperties}>
               <div className="event-date-col">
                 <span style={{ color: "var(--text-secondary)", fontSize: 11, letterSpacing: "0.08em", fontWeight: 500 }}>{ev.monthShort}</span>
-                <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 32, color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1 }}>{ev.dayNum}</span>
+                <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 32, color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{ev.dayNum}</span>
                 <span style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: "0.04em", marginTop: 2 }}>2026</span>
               </div>
               <div className="event-h-body">
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={ev.type === "Workshop"
-                    ? { fontSize: 11, fontWeight: 600, color: "var(--accent-2)", border: "1px solid rgba(var(--accent-2-rgb),0.3)", borderRadius: 4, padding: "2px 9px", letterSpacing: "0.03em" }
-                    : { fontSize: 11, fontWeight: 600, color: "var(--accent)", border: "1px solid rgba(248,174,53,0.25)", borderRadius: 4, padding: "2px 9px", letterSpacing: "0.03em" }
-                  }>{ev.type}</span>
-                  {ev.partner && <span style={{ fontSize: 11, color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 4, padding: "2px 9px" }}>{ev.partner}</span>}
+                  <span className={`tag ${ev.type === "Workshop" ? "tag--accent-2" : "tag--accent"}`}>{ev.type}</span>
+                  {ev.partner && <span className="tag" style={{ fontWeight: 400 }}>{ev.partner}</span>}
                 </div>
                 <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.025em", lineHeight: 1.15 }}>{ev.name}</h3>
                 <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.58, margin: 0 }}>{ev.desc}</p>
@@ -1158,17 +1289,17 @@ function WhyJoinSection() {
   const headRef = useReveal()
   const bentoRef = useReveal()
   return (
-    <section style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section data-rail="128" style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div ref={headRef} className="reveal" style={{ textAlign: "center", marginBottom: 56 }}>
+        <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 56 }}>
           <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>Why Join AIS?</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 480, margin: "0 auto", lineHeight: 1.72 }}>
             More than a student org — a launchpad for your career at the intersection of business and tech.
           </p>
         </div>
-        <div ref={bentoRef} className="reveal bento-grid">
-          <div className="bento-tile fx-spot" style={{ position: "relative", overflow: "hidden" }}>
+        <div ref={bentoRef} className="reveal-stagger bento-grid" style={{ "--step": "100ms" } as React.CSSProperties}>
+          <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 0 } as React.CSSProperties}>
             <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.2 }}>Industry Access</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 24px", maxWidth: 420 }}>
               Direct access to 18+ leading companies through tech talks, recruiting panels, and company information sessions. Resume workshops and career prep from professionals who've been there.
@@ -1177,30 +1308,19 @@ function WhyJoinSection() {
               {["Goldman Sachs", "Microsoft", "Deloitte", "Accenture", "JP Morgan"].map((c) => (
                 <span key={c} style={{ fontSize: 12, color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 4, padding: "4px 10px" }}>{c}</span>
               ))}
-              <span style={{ fontSize: 12, color: "var(--accent)", border: "1px solid rgba(248,174,53,0.2)", borderRadius: 4, padding: "4px 10px" }}>+ 13 more</span>
+              <span style={{ fontSize: 12, color: "var(--accent-text)", border: "1px solid rgba(var(--accent-rgb),0.3)", borderRadius: 4, padding: "4px 10px" }}>+ 13 more</span>
             </div>
           </div>
 
-          <div className="bento-tile bento-tile-stat fx-spot">
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(48px, 6vw, 68px)", color: "var(--text-primary)", letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 8 }}>
-              240<span style={{ color: "var(--accent)" }}>+</span>
-            </div>
-            <div style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.55 }}>Students building their future in AIS UTD</div>
-          </div>
+          <BentoStat target={240} suffix="+" label="Students building their future in AIS UTD" />
+          <BentoStat target={8} label="Events every semester — workshops, talks, competitions, and socials" />
 
-          <div className="bento-tile bento-tile-stat fx-spot">
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(48px, 6vw, 68px)", color: "var(--text-primary)", letterSpacing: "-0.05em", lineHeight: 1, marginBottom: 8 }}>
-              8<span style={{ color: "var(--accent)" }}></span>
-            </div>
-            <div style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.55 }}>Events every semester — workshops, talks, competitions, and socials</div>
-          </div>
-
-          <div className="bento-tile fx-spot" style={{ position: "relative", overflow: "hidden" }}>
+          <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 3 } as React.CSSProperties}>
             <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.2 }}>Open to Every Major</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 14 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 14 }}>
               Join today
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
@@ -1218,27 +1338,22 @@ function WhyJoinSection() {
 function GetInvolvedSection() {
   const ref = useReveal()
   return (
-    <section className="glow-cta-section">
+    <section className="glow-cta-section" data-rail="150">
       <div ref={ref} className="reveal" style={{ position: "relative", zIndex: 1, maxWidth: 680, margin: "0 auto" }}>
-        <div style={{ width: 48, height: 1.5, background: "var(--accent)", margin: "0 auto 32px", borderRadius: 1 }} />
+        <div className="cta-rule" />
         <h2 className="section-heading" style={{ fontSize: "clamp(34px, 5.5vw, 58px)", margin: "0 0 20px", lineHeight: 1.03 }}>
           Ready to build your<br />
-          <span style={{ color: "var(--accent)" }}>future here?</span>
+          <span style={{ color: "var(--accent-text)" }}>future here?</span>
         </h2>
         <p style={{ color: "var(--text-secondary)", fontSize: 17, lineHeight: 1.72, maxWidth: 480, margin: "0 auto 44px" }}>
           Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
         </p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-          <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 16, padding: "14px 36px" }}>
+          <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 16, padding: "14px 36px" }}>
             Join AIS UTD
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
-          <a
-            href="mailto:utdallasais@gmail.com"
-            style={{ color: "var(--text-secondary)", fontFamily: "var(--font-body)", fontSize: 15, textDecoration: "none", transition: "color 0.18s" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)")}
-          >
+          <a href="mailto:utdallasais@gmail.com" className="quiet-link quiet-link--strong" style={{ fontSize: 15 }}>
             ais@utdallas.edu
           </a>
         </div>
@@ -1251,9 +1366,233 @@ function GetInvolvedSection() {
    Home page
 ───────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────
+   Scroll handoff overlay
+   A fixed canvas draws four signals travelling from the hero graph's nodes to
+   the stat cells, driven purely by scroll position. Each landing rings the
+   cell (`.received`) and releases its counter.
+───────────────────────────────────────────────────────── */
+
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+
+function StatHandoff() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+    if (!canvas || !ctx) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    let raf = 0
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      canvas.width = window.innerWidth * dpr
+      canvas.height = window.innerHeight * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+
+    const draw = () => {
+      raf = 0
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      ctx.clearRect(0, 0, vw, vh)
+
+      const viz = document.querySelector<HTMLElement>(".hero-viz-wrap canvas")
+      const grid = document.querySelector<HTMLElement>(".stats-grid")
+      const cells = document.querySelectorAll<HTMLElement>(".stat-cell")
+      // No graph on screen (narrow viewports hide it): counters just run on their own
+      if (!viz || !grid || cells.length < 4 || !viz.offsetWidth) {
+        handoff.active = false
+        handoff.p.fill(0)
+        return
+      }
+      handoff.active = true
+
+      const vr = viz.getBoundingClientRect()
+      const end = Math.max(1, grid.getBoundingClientRect().top + window.scrollY - vh * 0.78)
+      const u = clamp01(window.scrollY / end)
+      const contract = 1 - HERO_CONTRACT * collapseAt()
+      const rgb = getComputedStyle(document.documentElement).getPropertyValue("--accent-2-rgb").trim() || "45, 212, 191"
+
+      HANDOFF_NODES.forEach((nodeIdx, k) => {
+        const uk = clamp01((u - k * 0.1) / 0.6)
+        handoff.p[k] = uk
+
+        if (uk >= 1 && !cells[k].classList.contains("received")) {
+          cells[k].classList.add("received")
+          cells[k].dispatchEvent(new Event("received"))
+        }
+        if (uk <= 0 || uk >= 1) return
+
+        const n = VIZ_NODES[nodeIdx]
+        const sx = vr.left + (0.5 + (n.cx - 0.5) * contract) * vr.width
+        const sy = vr.top + (0.5 + (n.cy - 0.5) * contract) * vr.height
+        const cr = cells[k].getBoundingClientRect()
+        const tx = cr.left + cr.width / 2
+        const ty = cr.top + cr.height / 2
+        // Fan the four paths out so they read as separate signals
+        const cx = (sx + tx) / 2 + (k - 1.5) * 90
+        const cy = (sy + ty) / 2 - 30
+        const at = (t: number) => {
+          const m = 1 - t
+          return [m * m * sx + 2 * m * t * cx + t * t * tx, m * m * sy + 2 * m * t * cy + t * t * ty]
+        }
+
+        // Faint guide for the whole route
+        ctx.beginPath()
+        ctx.moveTo(sx, sy)
+        ctx.quadraticCurveTo(cx, cy, tx, ty)
+        ctx.strokeStyle = `rgba(${rgb}, 0.1)`
+        ctx.lineWidth = 1
+        ctx.stroke()
+
+        // Comet tail behind the head
+        const head = easeInOut(uk)
+        const tail = Math.max(0, head - 0.2)
+        const steps = 12
+        for (let i = 0; i < steps; i++) {
+          const a = at(tail + ((head - tail) * i) / steps)
+          const b = at(tail + ((head - tail) * (i + 1)) / steps)
+          ctx.beginPath()
+          ctx.moveTo(a[0], a[1])
+          ctx.lineTo(b[0], b[1])
+          ctx.strokeStyle = `rgba(${rgb}, ${(0.05 + 0.75 * ((i + 1) / steps)).toFixed(3)})`
+          ctx.lineWidth = 1 + 1.6 * ((i + 1) / steps)
+          ctx.lineCap = "round"
+          ctx.stroke()
+        }
+
+        const [hx, hy] = at(head)
+        const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, 12)
+        g.addColorStop(0, `rgba(${rgb}, 0.35)`)
+        g.addColorStop(1, `rgba(${rgb}, 0)`)
+        ctx.beginPath()
+        ctx.arc(hx, hy, 12, 0, Math.PI * 2)
+        ctx.fillStyle = g
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(hx, hy, 3.2, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(${rgb}, 0.95)`
+        ctx.fill()
+      })
+    }
+
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(draw) }
+    const onResize = () => { size(); schedule() }
+    size()
+    schedule()
+    window.addEventListener("scroll", schedule, { passive: true })
+    window.addEventListener("resize", onResize)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("scroll", schedule)
+      window.removeEventListener("resize", onResize)
+      handoff.active = false
+      handoff.p.fill(0)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} className="handoff-canvas" aria-hidden />
+}
+
+/* ─────────────────────────────────────────────────────────
+   Signal rail
+   A line down the left gutter with a travelling head. Each `[data-rail]`
+   section gets a node that lights as the head reaches it, and its heading
+   flashes amber for a beat. The value is the node's offset in px.
+───────────────────────────────────────────────────────── */
+
+function SignalRail() {
+  const railRef = useRef<HTMLDivElement>(null)
+  const fillRef = useRef<HTMLDivElement>(null)
+  const tailRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLDivElement>(null)
+  const updateRef = useRef<() => void>(() => {})
+  const [nodes, setNodes] = useState<number[]>([])
+
+  useEffect(() => {
+    const rail = railRef.current
+    const main = rail?.parentElement
+    if (!rail || !main) return
+
+    let raf = 0
+    let total = 1
+    let targets: HTMLElement[] = []
+    let ys: number[] = []
+    const flashed = new Set<number>()
+
+    const update = () => {
+      raf = 0
+      const mainTop = main.getBoundingClientRect().top + window.scrollY
+      const h = Math.max(0, Math.min(total, window.scrollY + window.innerHeight * 0.62 - mainTop))
+      if (fillRef.current) fillRef.current.style.transform = `scaleY(${h / total})`
+      if (tailRef.current) tailRef.current.style.transform = `translateY(${h - 140}px)`
+      if (headRef.current) headRef.current.style.transform = `translateY(${h}px)`
+
+      const els = rail.querySelectorAll<HTMLElement>(".rail-node")
+      ys.forEach((y, i) => {
+        const on = h >= y
+        els[i]?.classList.toggle("lit", on)
+        if (on && !flashed.has(i)) {
+          flashed.add(i)
+          const heading = targets[i].querySelector<HTMLElement>(".section-heading")
+          if (heading) {
+            heading.classList.add("flash")
+            window.setTimeout(() => heading.classList.remove("flash"), 380)
+          }
+        } else if (!on && h < y - 40) {
+          flashed.delete(i)
+        }
+      })
+    }
+    updateRef.current = update
+
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(update) }
+
+    const measure = () => {
+      const mainTop = main.getBoundingClientRect().top + window.scrollY
+      total = Math.max(1, main.offsetHeight)
+      targets = Array.from(main.querySelectorAll<HTMLElement>("[data-rail]"))
+      ys = targets.map((t) => t.getBoundingClientRect().top + window.scrollY - mainTop + (parseFloat(t.dataset.rail || "0") || 0))
+      const height = `${total}px`
+      rail.querySelectorAll<HTMLElement>(".rail-track, .rail-fill").forEach((el) => (el.style.height = height))
+      setNodes((prev) => (prev.length === ys.length && prev.every((v, i) => Math.abs(v - ys[i]) < 1) ? prev : ys))
+      schedule()
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(main)
+    window.addEventListener("scroll", schedule, { passive: true })
+    window.addEventListener("resize", schedule)
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+      window.removeEventListener("scroll", schedule)
+      window.removeEventListener("resize", schedule)
+    }
+  }, [])
+
+  // Nodes render after the first measure; light any the head has already passed
+  useEffect(() => { updateRef.current() }, [nodes])
+
+  return (
+    <div ref={railRef} className="signal-rail" aria-hidden>
+      <div className="rail-track" />
+      <div ref={fillRef} className="rail-fill" />
+      {nodes.map((y, i) => <span key={i} className="rail-node" style={{ top: y }} />)}
+      <div ref={tailRef} className="rail-tail" />
+      <div ref={headRef} className="rail-head" />
+    </div>
+  )
+}
+
 function HomePage({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme }) {
   return (
-    <main>
+    <main style={{ position: "relative" }}>
+      <SignalRail />
+      <StatHandoff />
       <HeroSection setPage={setPage} theme={theme} />
       <CompaniesSection />
       <StatsSection />
@@ -1342,8 +1681,9 @@ function EventsPage() {
           {ALL_EVENTS.slice(0, count).map((ev, idx) => (
             <div
               key={ev.name}
-              className="event-photo-card"
-              style={{ animation: newBatch.has(idx) ? `fadeUp 0.55s cubic-bezier(0.16,1,0.3,1) ${(idx % PAGE_SIZE) * 65}ms both` : "none" }}
+              className={`event-photo-card fx-spot${newBatch.has(idx) ? " enter-rise" : ""}`}
+              data-tilt="0.5"
+              style={{ "--i": idx % PAGE_SIZE } as React.CSSProperties}
             >
               <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
                 <div
@@ -1359,12 +1699,12 @@ function EventsPage() {
                   src={`https://images.unsplash.com/photo-${ev.photo}?w=640&h=360&fit=crop&auto=format`}
                   alt={ev.name}
                   onLoad={() => handleImageLoad(idx)}
-                  className={imageLoaded.has(idx) ? "image-loaded" : ""}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: "saturate(0.6) brightness(0.65)", transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1)", opacity: imageLoaded.has(idx) ? 1 : 0.7 }}
+                  className={`event-photo-img${imageLoaded.has(idx) ? " image-loaded" : ""}`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: imageLoaded.has(idx) ? 1 : 0.7 }}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(16,23,34,0.92) 0%, rgba(16,23,34,0.35) 55%, transparent 100%)" }} />
                 {ev.partner && (
-                  <span style={{ position: "absolute", top: 12, right: 12, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(16,23,34,0.8)", border: "1px solid rgba(248,174,53,0.28)", borderRadius: 4, padding: "3px 10px", backdropFilter: "blur(6px)" }}>
+                  <span style={{ position: "absolute", top: 12, right: 12, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(16,23,34,0.8)", border: "1px solid rgba(var(--accent-rgb),0.28)", borderRadius: 4, padding: "3px 10px", backdropFilter: "blur(6px)" }}>
                     {ev.partner}
                   </span>
                 )}
@@ -1434,10 +1774,10 @@ function OfficersPage() {
         </div>
       </div>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "52px 24px 80px" }}>
-        <div ref={gridRef} className="officers-grid">
+        <div ref={gridRef} className="officers-grid reveal-stagger" style={{ "--step": "45ms" } as React.CSSProperties}>
           {OFFICERS.map((o, i) => (
-            <div key={o.name} className="officer-card fx-spot" style={{ transitionDelay: `${i * 40}ms` }}>
-              <div style={{ width: "100%", aspectRatio: "1/1", background: `hsl(${AVATAR_HUE[i % AVATAR_HUE.length]},30%,var(--avatar-bg-l,18%))`, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-subtle)" }}>
+            <div key={o.name} className="officer-card fx-spot" data-tilt="0.7" style={{ "--i": i } as React.CSSProperties}>
+              <div className="officer-avatar" style={{ width: "100%", aspectRatio: "1/1", background: `hsl(${AVATAR_HUE[i % AVATAR_HUE.length]},30%,var(--avatar-bg-l,18%))`, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-subtle)" }}>
                 <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 28, color: `hsl(${AVATAR_HUE[i % AVATAR_HUE.length]},28%,var(--avatar-text-l,58%))`, letterSpacing: "0.02em" }}>
                   {initials(o.name)}
                 </span>
@@ -1446,7 +1786,7 @@ function OfficersPage() {
                 <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 4 }}>{o.name}</div>
                 <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{o.title}</div>
               </div>
-              <div style={{ height: 1.5, background: "linear-gradient(to right, rgba(248,174,53,0.25), transparent)", borderRadius: 1 }} />
+              <div className="officer-rule" />
             </div>
           ))}
         </div>
@@ -1460,27 +1800,8 @@ function OfficersPage() {
 ───────────────────────────────────────────────────────── */
 
 function ContactSocialBtn({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
-  const [h, setH] = useState(false)
   return (
-    <a
-      href={href}
-      onMouseEnter={() => setH(true)}
-      onMouseLeave={() => setH(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "10px 18px",
-        border: `1px solid ${h ? "rgba(248,174,53,0.3)" : "var(--border-subtle)"}`,
-        borderRadius: 6,
-        color: h ? "var(--accent)" : "var(--text-secondary)",
-        textDecoration: "none",
-        fontSize: 14,
-        fontFamily: "var(--font-body)",
-        background: h ? "rgba(248,174,53,0.06)" : "var(--bg-secondary)",
-        transition: "all 0.18s",
-      }}
-    >
+    <a href={href} className="social-btn social-btn--label">
       {icon}
       {label}
     </a>
@@ -1498,8 +1819,8 @@ function ContactPage() {
         </div>
       </div>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 80px" }}>
-        <div ref={ref} className="reveal contact-layout">
-          <div>
+        <div ref={ref} className="reveal-stagger contact-layout" style={{ "--step": "140ms" } as React.CSSProperties}>
+          <div style={{ "--i": 0 } as React.CSSProperties}>
             <div style={{ marginBottom: 48 }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "var(--text-secondary)", letterSpacing: "0.05em", marginBottom: 18 }}>FIND US ON</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1509,12 +1830,7 @@ function ContactPage() {
             <hr className="section-divider" style={{ marginBottom: 44 }} />
             <div>
               <div style={{ color: "var(--text-secondary)", fontSize: 13, letterSpacing: "0.04em", marginBottom: 12 }}>General inquiries</div>
-              <a
-                href="mailto:utdallasais@gmail.com"
-                style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "clamp(20px, 3vw, 28px)", color: "var(--text-primary)", textDecoration: "none", letterSpacing: "-0.03em", transition: "color 0.18s", display: "inline-block" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--accent)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)")}
-              >
+              <a href="mailto:utdallasais@gmail.com" className="email-link">
                 ais@utdallas.edu
               </a>
               <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 20, lineHeight: 1.6 }}>
@@ -1523,12 +1839,12 @@ function ContactPage() {
             </div>
           </div>
 
-          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "36px 32px", transition: "background-color 0.28s ease, border-color 0.28s ease" }}>
+          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "36px 32px", transition: "background-color 0.28s ease, border-color 0.28s ease", "--i": 1 } as React.CSSProperties}>
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: "0 0 12px", lineHeight: 1.15 }}>Ready to join?</h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 15, padding: "12px 28px", marginBottom: 28 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 15, padding: "12px 28px", marginBottom: 28 }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
