@@ -1247,11 +1247,11 @@ function WhatWeDoSection() {
   const headRef = useReveal()
   const gridRef = useReveal()
   return (
-    <section data-rail="128" style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section className="panel-section" data-rail="128" style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 64 }}>
-          <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>What We Do</h2>
+          <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>What We <span className="accent-italic">Do</span></h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 520, margin: "0 auto", lineHeight: 1.72 }}>
             Three pillars that define every AIS UTD experience — from your first meeting to your first offer.
           </p>
@@ -1276,20 +1276,20 @@ function WhatWeDoSection() {
 ───────────────────────────────────────────────────────── */
 
 const UPCOMING = [
-  { name: "Tech for Good Hackathon", date: "Sep 20, 2026", monthShort: "SEP", dayNum: "20", type: "Hackathon", desc: "24-hour challenge building data-driven solutions for nonprofits.", partner: "Microsoft" },
-  { name: "SQL & Python Workshop", date: "Sep 27, 2026", monthShort: "SEP", dayNum: "27", type: "Workshop", desc: "Hands-on session covering data querying and scripting fundamentals.", partner: null },
-  { name: "Networking Night", date: "Oct 5, 2026", monthShort: "OCT", dayNum: "05", type: "Networking", desc: "Connect with consulting and tech recruiters over a structured mixer.", partner: "Deloitte" },
+  { name: "Tech for Good Hackathon", date: "Sep 20, 2026", type: "Hackathon", desc: "24-hour challenge building data-driven solutions for nonprofits.", partner: "Microsoft", photo: "1550751827-4bd374c3f58b" },
+  { name: "SQL & Python Workshop", date: "Sep 27, 2026", type: "Workshop", desc: "Hands-on session covering data querying and scripting fundamentals.", partner: null, photo: "1516321318423-f06f85e504b3" },
+  { name: "Networking Night", date: "Oct 5, 2026", type: "Networking", desc: "Connect with consulting and tech recruiters over a structured mixer.", partner: "Deloitte", photo: "1515187029135-18ee286d815b" },
 ]
 
 function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
   const headRef = useReveal()
-  const listRef = useReveal()
+  const gridRef = useReveal()
   return (
     <section data-rail="128" style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, flexWrap: "wrap", gap: 20 }}>
           <div>
-            <h2 className="section-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 8px" }}>Upcoming Events</h2>
+            <h2 className="section-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 8px" }}>Upcoming <span className="accent-italic">Events</span></h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>What's happening this semester at AIS UTD.</p>
           </div>
           <button onClick={() => setPage("events")} className="text-link">
@@ -1297,25 +1297,28 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
         </div>
-        <div ref={listRef} className="reveal-stagger" data-dir="x" style={{ display: "flex", flexDirection: "column", gap: 14, "--step": "90ms" } as React.CSSProperties}>
+        <div ref={gridRef} className="reveal-stagger events-grid" style={{ "--step": "90ms" } as React.CSSProperties}>
           {UPCOMING.map((ev, i) => (
-            <div key={ev.name} className="event-h-card fx-spot" style={{ "--i": i } as React.CSSProperties}>
-              <div className="event-date-col">
-                <span style={{ color: "var(--text-secondary)", fontSize: 11, letterSpacing: "0.08em", fontWeight: 500 }}>{ev.monthShort}</span>
-                <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 32, color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{ev.dayNum}</span>
-                <span style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: "0.04em", marginTop: 2 }}>2026</span>
+            <div key={ev.name} className="event-card fx-spot" data-tilt="0.5" style={{ "--i": i } as React.CSSProperties}>
+              <div className="event-card-photo">
+                <img
+                  loading="lazy"
+                  src={`https://images.unsplash.com/photo-${ev.photo}?w=640&h=480&fit=crop&auto=format`}
+                  alt={ev.name}
+                />
               </div>
-              <div className="event-h-body">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div className="event-card-body">
+                <div className="event-card-meta">
                   <span className={`tag ${ev.type === "Workshop" ? "tag--accent-2" : "tag--accent"}`}>{ev.type}</span>
                   {ev.partner && <span className="tag" style={{ fontWeight: 400 }}>{ev.partner}</span>}
                 </div>
-                <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.025em", lineHeight: 1.15 }}>{ev.name}</h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.58, margin: 0 }}>{ev.desc}</p>
-              </div>
-              <div className="event-h-action">
-                View Details
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                <span className="event-card-date">{ev.date}</span>
+                <h3 className="event-card-title">{ev.name}</h3>
+                <p className="event-card-desc">{ev.desc}</p>
+                <span className="event-card-action">
+                  View Details
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </span>
               </div>
             </div>
           ))}
@@ -1337,7 +1340,7 @@ function WhyJoinSection() {
       <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 56 }}>
-          <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>Why Join AIS?</h2>
+          <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>Why Join <span className="accent-italic">AIS</span>?</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 480, margin: "0 auto", lineHeight: 1.72 }}>
             More than a student org — a launchpad for your career at the intersection of business and tech.
           </p>
@@ -1898,7 +1901,7 @@ function MobileCta({ page }: { page: Page }) {
 function useTouchFocus(page: Page) {
   useEffect(() => {
     if (!window.matchMedia("(hover: none)").matches) return
-    const sel = ".pillar-card, .bento-tile, .event-h-card, .event-photo-card, .np-story"
+    const sel = ".pillar-card, .bento-tile, .event-card, .event-photo-card, .np-story"
     const io = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.target.classList.toggle("is-active", e.isIntersecting)),
       { rootMargin: "-38% 0px -38% 0px" },

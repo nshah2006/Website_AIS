@@ -7,9 +7,14 @@
 @font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
 
+/* Editorial accent face — used sparingly to italicize one word inside a
+   heading (see .accent-italic). Not a body or display face. */
+@font-face { font-family: 'Italiana'; src: url('/fonts/italiana-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+
 @theme inline {
   --font-display: 'Clash Display', sans-serif;
   --font-body: 'General Sans', sans-serif;
+  --font-accent: 'Italiana', serif;
 }
 
 /* ─── Theme tokens ──────────────────────────────────────── */
@@ -25,6 +30,7 @@
   --bg-secondary: #192436;
   --bg-elevated:  #1C2C44;
   --bg-footer:    #0b1420;
+  --bg-panel:     #131C16;
 
   --text-primary:   #F8F9FC;
   --text-secondary: #A4B0C2;
@@ -69,6 +75,7 @@
   --bg-secondary: #FFFFFF;
   --bg-elevated:  #ECF0F7;
   --bg-footer:    #E6EAF2;
+  --bg-panel:     #E7EBDA;
 
   --text-primary:   #111827;
   --text-secondary: #4A5568;
@@ -925,6 +932,25 @@ html.theme-switching *::after { transition: none !important; }
   margin: 0;
 }
 
+/* One quiet word of editorial contrast inside a heading — never a whole
+   heading, never a label of its own. Weight and color step down as the
+   face steps up, so it reads as a second voice, not a second shout. */
+.accent-italic {
+  font-family: var(--font-accent);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.003em;
+}
+
+/* ─── Panel section ──────────────────────────────────────────
+   A section background pulled from the accent panel token instead of
+   the primary/secondary pair — a deliberate mood break, used once. */
+.panel-section {
+  background: var(--bg-panel);
+  transition: background-color 0.28s ease;
+}
+
 /* ─── Pillar cards ──────────────────────────────────────── */
 
 .pillar-cards-grid {
@@ -998,64 +1024,7 @@ html.theme-switching *::after { transition: none !important; }
   color: var(--text-secondary);
 }
 
-/* ─── Horizontal event cards ────────────────────────────── */
-
-.event-h-card {
-  display: flex;
-  align-items: stretch;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  overflow: hidden;
-  transition:
-    border-color 0.22s,
-    transform 0.28s var(--ease-out),
-    background-color 0.28s ease;
-  cursor: pointer;
-}
-.event-h-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.3);
-  transform: translateY(-3px);
-}
-.event-h-card:hover .event-h-action { color: var(--accent-text); gap: 10px; }
-.event-h-card:hover .event-date-col { background: rgba(var(--accent-rgb), 0.08); }
-
-.event-date-col {
-  flex: 0 0 84px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 28px 0;
-  background: var(--border-faint);
-  border-right: 1px solid var(--border-subtle);
-  text-align: center;
-  transition: background-color 0.28s ease, border-color 0.28s ease;
-}
-
-.event-h-body {
-  flex: 1;
-  padding: 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-width: 0;
-}
-
-.event-h-action {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 24px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--font-body);
-  font-weight: 500;
-  gap: 6px;
-  transition: color 0.18s, gap 0.25s var(--ease-out);
-  white-space: nowrap;
-}
+/* ─── Tags ───────────────────────────────────────────────── */
 
 .tag {
   font-size: 11px;
@@ -1069,20 +1038,82 @@ html.theme-switching *::after { transition: none !important; }
 .tag--accent   { color: var(--accent-text);   border-color: rgba(var(--accent-rgb), 0.3); }
 .tag--accent-2 { color: var(--accent-2-text); border-color: rgba(var(--accent-2-rgb), 0.35); }
 
-@media (max-width: 600px) {
-  .event-h-card { flex-direction: column; }
-  .event-date-col {
-    flex-direction: row;
-    gap: 10px;
-    flex: 0 0 auto;
-    padding: 14px 20px;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-    justify-content: flex-start;
-  }
-  .event-h-body { padding: 16px 20px; }
-  .event-h-action { padding: 0 20px 20px; justify-content: flex-start; }
+/* ─── Dated event card (photo over caption panel) ───────── */
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.22s, transform 0.28s var(--ease-out), background-color 0.28s ease, box-shadow 0.35s var(--ease-out);
 }
+.event-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.28);
+  transform: translateY(-4px);
+  box-shadow: 0 22px 40px -26px rgba(0, 0, 0, 0.5);
+}
+.event-card-photo {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+.event-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.92);
+  transition: transform 0.6s var(--ease-out), filter 0.4s ease;
+}
+.event-card:hover .event-card-photo img { transform: scale(1.05); filter: saturate(1.02); }
+.event-card-body {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.event-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.event-card-date {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.event-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+  color: var(--text-primary);
+  margin: 0;
+}
+.event-card-desc {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+.event-card-action {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.18s, gap 0.25s var(--ease-out);
+}
+.event-card:hover .event-card-action { color: var(--accent-text); gap: 10px; }
 
 /* ─── Why Join bento grid ───────────────────────────────── */
 
@@ -1398,9 +1429,9 @@ html.theme-switching *::after { transition: none !important; }
     box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.4);
   }
 
-  .event-h-card.is-active { border-color: rgba(var(--accent-rgb), 0.34); }
-  .event-h-card.is-active .event-h-action { color: var(--accent-text); gap: 10px; }
-  .event-h-card.is-active .event-date-col { background: rgba(var(--accent-rgb), 0.08); }
+  .event-card.is-active { border-color: rgba(var(--accent-rgb), 0.28); }
+  .event-card.is-active .event-card-photo img { transform: scale(1.05); filter: saturate(1.02); }
+  .event-card.is-active .event-card-action { color: var(--accent-text); gap: 10px; }
 
   .event-photo-card.is-active { border-color: rgba(var(--accent-rgb), 0.32); }
   .event-photo-card.is-active .event-photo-img { filter: saturate(0.95) brightness(0.8); transform: scale(1.05); }
@@ -1409,7 +1440,7 @@ html.theme-switching *::after { transition: none !important; }
 
   .pillar-card:active,
   .bento-tile:active,
-  .event-h-card:active,
+  .event-card:active,
   .event-photo-card:active { transform: scale(0.985); transition-duration: 0.1s; }
 }
 
