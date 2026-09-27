@@ -115,8 +115,13 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
 html, body, #root { height: 100%; }
+a, button, summary, [role="button"] { touch-action: manipulation; }
 
 body {
   font-family: var(--font-body);
@@ -225,6 +230,14 @@ input, textarea, select { accent-color: var(--accent); }
   to   { opacity: 1; scale: 1; }
 }
 
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes menuOut {
+  to { opacity: 0; }
+}
+
 @keyframes drawStroke {
   from { stroke-dashoffset: 120; }
   to   { stroke-dashoffset: 0; }
@@ -317,6 +330,9 @@ input, textarea, select { accent-color: var(--accent); }
 }
 
 .nav-logo img { transition: transform 0.5s var(--ease-out); }
+.nav-logo-img { height: 56px; width: 56px; border-radius: 50%; object-fit: cover; display: block; }
+.nav-wordmark { white-space: nowrap; }
+.nav-burger { display: none; }
 .nav-logo:hover img { transform: rotate(-8deg) scale(1.05); }
 
 .nav-link {
@@ -351,6 +367,14 @@ input, textarea, select { accent-color: var(--accent); }
 }
 .nav-link:hover::after  { transform: scaleX(0.3); }
 .nav-link.active::after { transform: scaleX(1); }
+
+@media (max-width: 639px) {
+  :root { --nav-h: 64px; }
+  .nav-logo-img { height: 42px; width: 42px; }
+  .join-btn.nav-cta { display: none; }
+  .nav-burger { display: flex; }
+  .nav-burger, .theme-toggle { width: 42px !important; height: 42px !important; }
+}
 
 /* ─── Buttons & links ───────────────────────────────────── */
 
@@ -478,6 +502,46 @@ input, textarea, select { accent-color: var(--accent); }
 }
 .email-link:hover { color: var(--accent-text); text-decoration-color: currentColor; }
 
+/* ─── Mobile-only chrome ────────────────────────────────── */
+
+.mobile-cta { display: none; }
+@media (max-width: 639px) {
+  .mobile-cta {
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    left: 16px; right: 16px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 60;
+    padding: 15px 20px;
+    border-radius: 14px;
+    font-size: 15px;
+    box-shadow: 0 16px 32px -14px rgba(0, 0, 0, 0.65);
+    opacity: 0;
+    transform: translateY(150%);
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.5s var(--ease-out), background 0.18s;
+  }
+  .mobile-cta.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .mobile-cta:hover { transform: translateY(0); }
+  .mobile-cta.show:active { transform: scale(0.98); }
+}
+
+.mobile-menu {
+  padding: calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 24px);
+  overflow-y: auto;
+}
+.mobile-menu.closing { animation: menuOut 0.24s ease forwards !important; }
+.mobile-menu-foot {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: fadeUp 0.5s var(--ease-out) 380ms both;
+}
+.mobile-menu-socials { display: flex; gap: 10px; }
+
 /* ─── Scroll handoff overlay (hero graph → stat cells) ──── */
 
 .handoff-canvas {
@@ -494,13 +558,18 @@ input, textarea, select { accent-color: var(--accent); }
 .signal-rail {
   position: absolute;
   top: 0; bottom: 0;
-  left: clamp(10px, calc((100vw - 1200px) / 2 - 36px), 120px);
+  left: clamp(4px, calc((100vw - 1200px) / 2 - 36px), 120px);
   width: 9px;
   z-index: 3;
   pointer-events: none;
-  display: none;
 }
-@media (min-width: 900px) { .signal-rail { display: block; } }
+@media (max-width: 639px) {
+  .signal-rail { width: 7px; }
+  .rail-track, .rail-fill { left: 3px; }
+  .rail-tail { left: 2.5px; height: 90px; }
+  .rail-head { width: 7px; height: 7px; top: -3.5px; border-width: 1.5px; }
+  .rail-node { width: 7px; height: 7px; margin-top: -3.5px; }
+}
 
 .rail-track,
 .rail-fill { position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; }
@@ -590,6 +659,8 @@ html.theme-switching *::after { transition: none !important; }
 
 /* ─── Hero ──────────────────────────────────────────────── */
 
+.hero-section { min-height: 100vh; min-height: 100svh; }
+
 .hero-layout {
   position: relative;
   z-index: 2;
@@ -598,6 +669,7 @@ html.theme-switching *::after { transition: none !important; }
   padding: 0 24px;
   padding-top: var(--nav-h);
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   align-items: center;
   gap: 56px;
@@ -664,10 +736,25 @@ html.theme-switching *::after { transition: none !important; }
   align-items: center;
 }
 
+/* Phones and tablets: graph moves under the copy instead of disappearing */
 @media (max-width: 920px) {
-  .hero-layout { justify-content: center; }
-  .hero-viz-wrap { display: none; }
+  .hero-layout {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 36px;
+    padding-top: calc(var(--nav-h) + 24px);
+    padding-bottom: 72px;
+  }
+  .hero-viz-wrap { flex: none; width: 100%; height: min(92vw, 400px); }
+  .hero-scroll-mouse { display: none !important; }
 }
+@media (max-width: 480px) {
+  .hero-cta-row > * { flex: 1 1 0; justify-content: center; padding-left: 12px !important; padding-right: 12px !important; white-space: nowrap; }
+}
+
+/* Touching the graph: horizontal drags light nodes, vertical drags still scroll */
+.hero-viz-wrap canvas { touch-action: pan-y; }
 
 /* ─── Company logos ─────────────────────────────────────── */
 
@@ -694,6 +781,33 @@ html.theme-switching *::after { transition: none !important; }
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+.company-logo-dup { display: none; }
+
+/* Phones: seven stacked logos become one slow marquee (paused while touched) */
+@media (max-width: 640px) {
+  .companies-marquee {
+    padding: 0 !important;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  }
+  .companies-box {
+    width: max-content;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 26px 0;
+    /* Solid band: the white-background logo PNGs blend against it, and a
+       transformed group has no other backdrop to blend with */
+    background: var(--bg-secondary);
+    border: none;
+    border-radius: 0;
+    animation: marquee 36s linear infinite;
+  }
+  .company-logo-slot { flex: none; padding: 0 30px; }
+  .company-logo-dup { display: inline-flex; }
+  .companies-marquee:active .companies-box { animation-play-state: paused; }
 }
 
 /* Shared hover / transition */
@@ -1140,7 +1254,7 @@ html.theme-switching *::after { transition: none !important; }
   max-width: 900px;
 }
 @media (max-width: 680px) {
-  .contact-layout { grid-template-columns: 1fr; gap: 0; }
+  .contact-layout { grid-template-columns: 1fr; gap: 44px; }
 }
 
 /* ─── Form fields ───────────────────────────────────────── */
@@ -1264,6 +1378,50 @@ html.theme-switching *::after { transition: none !important; }
   }
 }
 
+/* ─── Touch devices ─────────────────────────────────────────
+   No hover, so the card nearest the middle of the screen takes on its
+   hover look (`.is-active`, set by useTouchFocus), and every tappable
+   answers a press. Targets grow to 44px; inputs go to 16px so iOS
+   does not zoom on focus.                                            */
+
+@media (hover: none) {
+  .pillar-card.is-active {
+    transform: translateY(-4px);
+    border-color: rgba(var(--accent-rgb), 0.3);
+    box-shadow: 0 22px 40px -24px rgba(0, 0, 0, 0.45);
+  }
+  .pillar-card.is-active::before { transform: scaleX(1); }
+  .pillar-card.is-active .pillar-icon { color: var(--accent-text); }
+
+  .bento-tile.is-active {
+    border-color: rgba(var(--accent-rgb), 0.3);
+    box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.4);
+  }
+
+  .event-h-card.is-active { border-color: rgba(var(--accent-rgb), 0.34); }
+  .event-h-card.is-active .event-h-action { color: var(--accent-text); gap: 10px; }
+  .event-h-card.is-active .event-date-col { background: rgba(var(--accent-rgb), 0.08); }
+
+  .event-photo-card.is-active { border-color: rgba(var(--accent-rgb), 0.32); }
+  .event-photo-card.is-active .event-photo-img { filter: saturate(0.95) brightness(0.8); transform: scale(1.05); }
+
+  .np-story.is-active .np-photo-in img { transform: scale(1.045); filter: none; }
+
+  .pillar-card:active,
+  .bento-tile:active,
+  .event-h-card:active,
+  .event-photo-card:active { transform: scale(0.985); transition-duration: 0.1s; }
+}
+
+@media (pointer: coarse) {
+  .social-btn { width: 44px; height: 44px; }
+  .social-btn--label { width: auto; height: auto; padding: 12px 18px; }
+  .quiet-link { display: inline-block; padding: 10px 0; }
+  .text-link { padding: 10px 0; }
+  .ghost-btn, .join-btn { min-height: 44px; }
+  .field { font-size: 16px; padding: 14px; }
+}
+
 /* ─── Reduced motion ────────────────────────────────────────
    Fewer and gentler, not none: colour, border and state changes
    stay; spatial movement, loops and long sequences go.        */
@@ -1286,4 +1444,7 @@ html.theme-switching *::after { transition: none !important; }
   .scroll-progress { display: none; }
   .handoff-canvas { display: none; }
   .rail-tail { display: none; }
+  .companies-box { animation: none !important; }
+  .companies-marquee { overflow-x: auto; }
+  .mobile-cta { transition: opacity 0.2s ease; transform: none; }
 }

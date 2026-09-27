@@ -245,6 +245,8 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
   const edgesRef = useRef(VIZ_EDGES.map((e) => ({ ...e })))
   // Smoothed 0..1 hover amount per node, so proximity eases instead of snapping
   const hoverRef = useRef(VIZ_NODES.map(() => 0))
+  // Taps/clicks send a ripple out from the point of contact
+  const pulsesRef = useRef<{ x: number; y: number; t: number }[]>([])
   // Survives theme switches so the intro never replays
   const startRef = useRef<number | null>(null)
 
@@ -358,6 +360,24 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         hover[i] += (near - hover[i]) * Math.min(1, 0.18 * frame)
       })
 
+      // Ripples: kick nodes the wavefront passes, draw the expanding ring
+      const now = performance.now()
+      pulsesRef.current = pulsesRef.current.filter((p) => now - p.t < 1000)
+      for (const p of pulsesRef.current) {
+        const age = now - p.t
+        const radius = 6 + age * 0.16
+        VIZ_NODES.forEach((_, i) => {
+          if (Math.abs(Math.hypot(pos[i].x - p.x, pos[i].y - p.y) - radius) < 14) hover[i] = 1
+        })
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
+        ctx.strokeStyle = C.signalDot
+        ctx.globalAlpha = 0.55 * (1 - age / 1000)
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+
       // Outer glow ring
       const cr = pos[0]
       const ringAlpha = (0.07 + Math.sin(t * 1.6) * 0.03) * prog[0]
@@ -463,11 +483,38 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
     }
     window.addEventListener("mousemove", onMove, { passive: true })
 
+    // Touch and click: ripple on press; a finger dragging across lights nodes.
+    let releaseTimer = 0
+    const onDown = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect()
+      pulsesRef.current.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() })
+      if (e.pointerType !== "mouse") {
+        clearTimeout(releaseTimer)
+        mouseRef.current = { x: e.clientX, y: e.clientY }
+      }
+    }
+    const onTouchMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return
+      mouseRef.current = { x: e.clientX, y: e.clientY }
+    }
+    const onRelease = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return
+      releaseTimer = window.setTimeout(() => { mouseRef.current = { x: -9999, y: -9999 } }, 650)
+    }
+    canvas.addEventListener("pointerdown", onDown)
+    canvas.addEventListener("pointermove", onTouchMove)
+    canvas.addEventListener("pointerup", onRelease)
+    canvas.addEventListener("pointercancel", onRelease)
     return () => {
       stop()
       io.disconnect()
       ro.disconnect()
+      clearTimeout(releaseTimer)
       window.removeEventListener("mousemove", onMove)
+      canvas.removeEventListener("pointerdown", onDown)
+      canvas.removeEventListener("pointermove", onTouchMove)
+      canvas.removeEventListener("pointerup", onRelease)
+      canvas.removeEventListener("pointercancel", onRelease)
     }
   // Re-run when theme changes so canvas redraws with new colors
   }, [theme]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -614,6 +661,12 @@ function Nav({
 }) {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+
+  const closeMenu = useCallback(() => {
+    setClosing(true)
+    window.setTimeout(() => { setOpen(false); setClosing(false) }, 240)
+  }, [])
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20)
@@ -634,10 +687,10 @@ function Nav({
 
   useEffect(() => {
     if (!open) return
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") closeMenu() }
     window.addEventListener("keydown", h)
     return () => window.removeEventListener("keydown", h)
-  }, [open])
+  }, [open, closeMenu])
 
   const isDark = theme === "dark"
 
@@ -708,8 +761,8 @@ function Nav({
             aria-label="AIS UTD — go to home"
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
           >
-            <img src={aisLogo} alt="AIS UTD" style={{ height: 56, width: 56, borderRadius: "50%", objectFit: "cover", display: "block" }} />
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text-primary)", letterSpacing: "-0.025em", transition: "color 0.28s ease" }}>
+            <img src={aisLogo} alt="AIS UTD" className="nav-logo-img" />
+            <span className="nav-wordmark" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text-primary)", letterSpacing: "-0.025em", transition: "color 0.28s ease" }}>
               AIS{" "}
               <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 15, color: "var(--text-secondary)", transition: "color 0.28s ease" }}>UTD</span>
             </span>
@@ -739,7 +792,7 @@ function Nav({
               {isDark ? <SunIcon /> : <MoonIcon />}
             </button>
 
-            <a href="mailto:utdallasais@gmail.com" className="join-btn hidden sm:inline-flex">
+            <a href="mailto:utdallasais@gmail.com" className="join-btn nav-cta hidden sm:inline-flex">
               Get Involved
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
@@ -748,8 +801,8 @@ function Nav({
 
             {/* Hamburger — mobile only */}
             <button
-              className="flex sm:hidden"
-              onClick={() => setOpen(!open)}
+              className="nav-burger"
+              onClick={() => (open ? closeMenu() : setOpen(true))}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
               style={{
@@ -757,8 +810,8 @@ function Nav({
                 border: "1px solid var(--border-subtle)",
                 borderRadius: 6,
                 cursor: "pointer",
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
@@ -792,6 +845,7 @@ function Nav({
       {/* Mobile menu */}
       {open && (
         <div
+          className={`mobile-menu${closing ? " closing" : ""}`}
           style={{
             position: "fixed",
             inset: 0,
@@ -812,7 +866,7 @@ function Nav({
           {NAV_LINKS.map((l, i) => (
             <button
               key={l.page}
-              onClick={() => { setPage(l.page); setOpen(false) }}
+              onClick={() => { setPage(l.page); closeMenu() }}
               style={{
                 background: "none",
                 border: "none",
@@ -837,6 +891,12 @@ function Nav({
           >
             Get Involved
           </a>
+          <div className="mobile-menu-foot">
+            <div className="mobile-menu-socials">
+              {SOCIALS.map((s) => <SocialBtn key={s.label} {...s} />)}
+            </div>
+            <a href="mailto:utdallasais@gmail.com" className="quiet-link">ais@utdallas.edu</a>
+          </div>
         </div>
       )}
     </>
@@ -1011,7 +1071,7 @@ function BentoStat({ target, suffix = "", label }: { target: number; suffix?: st
 function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme }) {
   const isDark = theme === "dark"
   return (
-    <section className="fx-spot fx-spot-lg" style={{ position: "relative", minHeight: "100vh", background: "var(--bg-primary)", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section className="hero-section fx-spot fx-spot-lg" style={{ position: "relative", background: "var(--bg-primary)", overflow: "hidden", transition: "background-color 0.28s ease" }}>
       <div aria-hidden data-parallax="-0.3" style={{
         position: "absolute", inset: 0,
         background: isDark
@@ -1046,10 +1106,6 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
             </button>
           </div>
 
-          <div className="anim-fade-in sm:hidden" style={{ marginTop: 52, display: "flex", alignItems: "center", gap: 8, animationDelay: "1100ms" }}>
-            <div style={{ width: 24, height: 1, background: "var(--border-subtle)" }} />
-            <span style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.1em" }}>SCROLL TO EXPLORE</span>
-          </div>
         </div>
 
         <div className="hero-viz-wrap" data-parallax="-0.2" data-mouse>
@@ -1058,7 +1114,7 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
         </div>
       </div>
 
-      <div aria-hidden style={{ position: "absolute", bottom: 28, left: "50%", animation: "scrollBob 2.6s ease-in-out infinite, fadeIn 1s ease 1s both", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div aria-hidden className="hero-scroll-mouse" style={{ position: "absolute", bottom: 28, left: "50%", animation: "scrollBob 2.6s ease-in-out infinite, fadeIn 1s ease 1s both", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         <div style={{ width: 22, height: 34, border: "1.5px solid var(--border-subtle)", borderRadius: 11, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "5px 0" }}>
           <div style={{ width: 2.5, height: 7, background: "rgba(var(--accent-rgb),0.55)", borderRadius: 2 }} />
         </div>
@@ -1113,6 +1169,19 @@ const COMPANIES: LogoEntry[] = [
   { name: "Bank of America",   logoClass: "svg",        src: logoBofA, w: 108 },
 ]
 
+function LogoMark({ co }: { co: LogoEntry }) {
+  return co.logoClass === "inline" ? (
+    <OracleLogo w={co.w} />
+  ) : (
+    <img
+      src={co.src}
+      alt=""
+      className={co.logoClass === "svg" ? "logo-svg" : "logo-png-solid"}
+      style={{ width: co.w, height: 36 }}
+    />
+  )
+}
+
 function CompaniesSection() {
   const boxRef = useReveal()
   return (
@@ -1122,20 +1191,17 @@ function CompaniesSection() {
           WHERE OUR STUDENTS HAVE WORKED
         </span>
       </div>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
+      <div className="companies-marquee" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={boxRef} className="companies-box reveal-stagger" style={{ "--step": "60ms" } as React.CSSProperties}>
           {COMPANIES.map((co, i) => (
-            <span key={co.name} className="company-logo-slot" aria-label={co.name} style={{ "--i": i } as React.CSSProperties}>
-              {co.logoClass === "inline" ? (
-                <OracleLogo w={co.w} />
-              ) : (
-                <img
-                  src={co.src}
-                  alt={co.name}
-                  className={co.logoClass === "svg" ? "logo-svg" : "logo-png-solid"}
-                  style={{ width: co.w, height: 36 }}
-                />
-              )}
+            <span key={co.name} className="company-logo-slot" role="img" aria-label={co.name} style={{ "--i": i } as React.CSSProperties}>
+              <LogoMark co={co} />
+            </span>
+          ))}
+          {/* Second set for the seamless phone marquee; hidden elsewhere */}
+          {COMPANIES.map((co) => (
+            <span key={`${co.name}-dup`} className="company-logo-slot company-logo-dup" aria-hidden>
+              <LogoMark co={co} />
             </span>
           ))}
         </div>
@@ -1782,6 +1848,81 @@ function ContactPage() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   Phone chrome
+───────────────────────────────────────────────────────── */
+
+/* Sticky "Get Involved" bar: appears once the hero is behind you and steps
+   aside when the page's own CTA or the footer is on screen. */
+function MobileCta({ page }: { page: Page }) {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    setShow(false)
+    if (page === "contact") return
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight
+      const cta = document.querySelector(".glow-cta-section")?.getBoundingClientRect()
+      const foot = document.querySelector("footer")?.getBoundingClientRect()
+      const blocked = (cta && cta.top < vh * 0.9 && cta.bottom > 0) || (foot && foot.top < vh * 0.98)
+      setShow(window.scrollY > vh * 0.7 && !blocked)
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    const t = window.setTimeout(update, 150)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+    return () => {
+      clearTimeout(t)
+      cancelAnimationFrame(raf)
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+    }
+  }, [page])
+
+  return (
+    <a
+      href="mailto:utdallasais@gmail.com"
+      className={`join-btn mobile-cta${show ? " show" : ""}`}
+      tabIndex={show ? 0 : -1}
+      aria-hidden={!show}
+    >
+      Get Involved
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+    </a>
+  )
+}
+
+/* No hover on touch screens, so the card nearest the middle of the screen
+   takes on its hover look. See the "Touch devices" block in index.css. */
+function useTouchFocus(page: Page) {
+  useEffect(() => {
+    if (!window.matchMedia("(hover: none)").matches) return
+    const sel = ".pillar-card, .bento-tile, .event-h-card, .event-photo-card, .np-story"
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.target.classList.toggle("is-active", e.isIntersecting)),
+      { rootMargin: "-38% 0px -38% 0px" },
+    )
+    const seen = new WeakSet<Element>()
+    const scan = () =>
+      document.querySelectorAll(sel).forEach((el) => {
+        if (!seen.has(el)) {
+          seen.add(el)
+          io.observe(el)
+        }
+      })
+    scan()
+    const root = document.getElementById("root")
+    const mo = new MutationObserver(scan)
+    if (root) mo.observe(root, { childList: true, subtree: true })
+    return () => {
+      io.disconnect()
+      mo.disconnect()
+    }
+  }, [page])
+}
+
+/* ─────────────────────────────────────────────────────────
    App Root
 ───────────────────────────────────────────────────────── */
 
@@ -1791,6 +1932,7 @@ export default function App() {
   const [theme, setTheme] = useTheme()
   const [contactFormOpen, setContactFormOpen] = useState(false)
   useImmersion(page)
+  useTouchFocus(page)
 
   const navigate = (p: Page) => {
     if (p === page) return
@@ -1815,6 +1957,7 @@ export default function App() {
         {page === "contact"  && <ContactPage onGetInvolved={openContactForm} />}
       </div>
       <Footer setPage={navigate} onGetInvolved={openContactForm} />
+      <MobileCta page={page} />
       {contactFormOpen && <ContactForm onClose={closeContactForm} source={`website_${page}`} />}
     </div>
   )
