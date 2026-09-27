@@ -1,10 +1,16 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface ContactFormProps {
   onClose?: () => void
   source?: string
   inline?: boolean
 }
+
+const FIELDS = [
+  { name: "name", type: "text", placeholder: "Your name", required: true },
+  { name: "email", type: "email", placeholder: "your.email@utdallas.edu", required: true },
+  { name: "major", type: "text", placeholder: "Your major (optional)", required: false },
+] as const
 
 export default function ContactForm({ onClose, source = "website", inline = false }: ContactFormProps) {
   const [formData, setFormData] = useState({
@@ -15,6 +21,13 @@ export default function ContactForm({ onClose, source = "website", inline = fals
   })
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [errorMsg, setErrorMsg] = useState("")
+
+  useEffect(() => {
+    if (inline || !onClose) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [inline, onClose])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -57,162 +70,76 @@ export default function ContactForm({ onClose, source = "website", inline = fals
   }
 
   const isValid = formData.name.trim() && formData.email.trim()
+  const fieldClass = inline ? "field field--inline" : "field"
 
-  if (inline) {
-    return (
-      <form onSubmit={handleSubmit} style={{ width: "100%" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+  const form = (
+    <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {FIELDS.map((f, i) => (
           <input
-            type="text"
-            name="name"
-            placeholder="Your name"
-            value={formData.name}
+            key={f.name}
+            type={f.type}
+            name={f.name}
+            placeholder={f.placeholder}
+            aria-label={f.placeholder}
+            value={formData[f.name]}
             onChange={handleChange}
-            required
-            style={{
-              padding: "12px 14px",
-              borderRadius: 6,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--bg-secondary)",
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
+            required={f.required}
+            autoFocus={!inline && i === 0}
+            className={fieldClass}
           />
-          <input
-            type="email"
-            name="email"
-            placeholder="your.email@utdallas.edu"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            style={{
-              padding: "12px 14px",
-              borderRadius: 6,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--bg-secondary)",
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
-          />
-          <input
-            type="text"
-            name="major"
-            placeholder="Your major (optional)"
-            value={formData.major}
-            onChange={handleChange}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 6,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--bg-secondary)",
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
-          />
-          <textarea
-            name="message"
-            placeholder="Tell us a bit about yourself (optional)"
-            value={formData.message}
-            onChange={handleChange}
-            rows={4}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 6,
-              border: "1px solid var(--border-subtle)",
-              background: "var(--bg-secondary)",
-              color: "var(--text-primary)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              resize: "vertical",
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
-          />
+        ))}
+        <textarea
+          name="message"
+          placeholder="Tell us a bit about yourself (optional)"
+          aria-label="Tell us a bit about yourself"
+          value={formData.message}
+          onChange={handleChange}
+          rows={4}
+          className={fieldClass}
+          style={{ resize: "vertical" }}
+        />
 
+        <div aria-live="polite">
           {status === "error" && (
-            <div
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                background: "rgba(239, 68, 68, 0.1)",
-                color: "#ef4444",
-                fontSize: 13,
-                animation: "fadeIn 0.35s ease",
-              }}
-            >
-              {errorMsg}
-            </div>
+            <div className="form-note form-note--error" role="alert">{errorMsg}</div>
           )}
-
           {status === "success" && (
-            <div
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                background: "rgba(34, 197, 94, 0.1)",
-                color: "#22c55e",
-                fontSize: 13,
-                animation: "fadeIn 0.35s ease",
-              }}
-            >
-              ✓ Thanks for your interest! We'll be in touch soon.
+            <div className="form-note form-note--success" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+              Thanks for your interest! We'll be in touch soon.
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={!isValid || status === "loading"}
-            className="join-btn"
-            style={{
-              opacity: isValid ? 1 : 0.5,
-              cursor: isValid ? "pointer" : "not-allowed",
-              fontSize: 15,
-              padding: "13px 28px",
-            }}
-          >
-            {status === "loading" ? "Sending..." : "Get Involved"}
-          </button>
         </div>
-      </form>
-    )
-  }
+
+        <button
+          type="submit"
+          disabled={!isValid || status === "loading"}
+          className="join-btn"
+          style={{ fontSize: 15, padding: "13px 28px", justifyContent: "center" }}
+        >
+          {status === "loading" ? "Sending…" : "Get Involved"}
+        </button>
+      </div>
+    </form>
+  )
+
+  if (inline) return form
 
   // Modal view (for buttons)
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0, 0, 0, 0.5)",
-        animation: "fadeIn 0.3s ease",
-        backdropFilter: "blur(4px)",
-      }}
-      onClick={onClose}
-    >
+    <div className="modal-scrim" onClick={onClose}>
       <div
-        style={{
-          background: "var(--bg-secondary)",
-          borderRadius: 12,
-          padding: 32,
-          maxWidth: 500,
-          width: "90%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          border: "1px solid var(--border-subtle)",
-          animation: "fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both",
-        }}
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-form-title"
         onClick={(e) => e.stopPropagation()}
       >
         <h2
+          id="contact-form-title"
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 700,
@@ -227,121 +154,7 @@ export default function ContactForm({ onClose, source = "website", inline = fals
         <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>
           Join AIS UTD and start building your future at the intersection of business and technology.
         </p>
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <input
-              type="text"
-              name="name"
-              placeholder="Your name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                border: "1px solid var(--border-subtle)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-              }}
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="your.email@utdallas.edu"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                border: "1px solid var(--border-subtle)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-              }}
-            />
-            <input
-              type="text"
-              name="major"
-              placeholder="Your major (optional)"
-              value={formData.major}
-              onChange={handleChange}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                border: "1px solid var(--border-subtle)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-              }}
-            />
-            <textarea
-              name="message"
-              placeholder="Tell us a bit about yourself (optional)"
-              value={formData.message}
-              onChange={handleChange}
-              rows={4}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 6,
-                border: "1px solid var(--border-subtle)",
-                background: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-              }}
-            />
-
-            {status === "error" && (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 6,
-                  background: "rgba(239, 68, 68, 0.1)",
-                  color: "#ef4444",
-                  fontSize: 13,
-                  animation: "fadeIn 0.35s ease",
-                }}
-              >
-                {errorMsg}
-              </div>
-            )}
-
-            {status === "success" && (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 6,
-                  background: "rgba(34, 197, 94, 0.1)",
-                  color: "#22c55e",
-                  fontSize: 13,
-                  animation: "fadeIn 0.35s ease",
-                }}
-              >
-                ✓ Thanks for your interest! We'll be in touch soon.
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={!isValid || status === "loading"}
-              className="join-btn"
-              style={{
-                opacity: isValid ? 1 : 0.5,
-                cursor: isValid ? "pointer" : "not-allowed",
-                fontSize: 15,
-                padding: "13px 28px",
-              }}
-            >
-              {status === "loading" ? "Sending..." : "Get Involved"}
-            </button>
-          </div>
-        </form>
+        {form}
       </div>
     </div>
   )
