@@ -255,44 +255,44 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
   // Color palette per theme
   const C = isDark
     ? {
-        edge: "rgba(164,176,194,0.14)",
+        edge: "rgba(196,184,160,0.16)",
         nodeFill: (near: boolean) =>
-          near ? "rgba(248,174,53,0.10)" : "rgba(25,36,54,0.75)",
+          near ? "rgba(248,174,53,0.10)" : "rgba(25,36,54,0.35)",
         nodeStroke: (near: boolean) =>
-          near ? "rgba(248,174,53,0.5)" : "rgba(164,176,194,0.24)",
+          near ? "rgba(248,174,53,0.5)" : "rgba(196,184,160,0.28)",
         dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(248,174,53,0.88)" : "rgba(164,176,194,0.55)",
+          center || near ? "rgba(248,174,53,0.88)" : "rgba(196,184,160,0.6)",
         label: (center: boolean, near: boolean) =>
           center
             ? "rgba(248,174,53,0.95)"
             : near
               ? "rgba(248,174,53,0.85)"
-              : "rgba(164,176,194,0.72)",
+              : "rgba(210,200,180,0.78)",
         ringOuter: (a: number) => `rgba(248,174,53,${a})`,
         ringInner: "rgba(248,174,53,0.2)",
-        signalGlow0: "rgba(45,212,191,0.24)",
-        signalDot: "rgba(45,212,191,0.85)",
+        signalGlow0: "rgba(248,174,53,0.24)",
+        signalDot: "rgba(248,174,53,0.9)",
         centerFill: "rgba(248,174,53,0.12)",
         centerStroke: "rgba(248,174,53,0.68)",
       }
     : {
-        edge: "rgba(60,80,130,0.16)",
+        edge: "rgba(90,75,55,0.18)",
         nodeFill: (near: boolean) =>
-          near ? "rgba(201,125,0,0.10)" : "rgba(236,240,247,0.85)",
+          near ? "rgba(201,125,0,0.10)" : "rgba(253,252,248,0.55)",
         nodeStroke: (near: boolean) =>
-          near ? "rgba(201,125,0,0.5)" : "rgba(80,100,150,0.26)",
+          near ? "rgba(201,125,0,0.5)" : "rgba(90,75,55,0.3)",
         dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(201,125,0,0.9)" : "rgba(80,100,150,0.5)",
+          center || near ? "rgba(201,125,0,0.9)" : "rgba(90,75,55,0.55)",
         label: (center: boolean, near: boolean) =>
           center
             ? "rgba(146,87,0,1)"
             : near
               ? "rgba(146,87,0,0.9)"
-              : "rgba(50,70,110,0.78)",
+              : "rgba(60,50,38,0.8)",
         ringOuter: (a: number) => `rgba(201,125,0,${a})`,
         ringInner: "rgba(201,125,0,0.18)",
-        signalGlow0: "rgba(15,139,141,0.22)",
-        signalDot: "rgba(15,139,141,0.85)",
+        signalGlow0: "rgba(201,125,0,0.22)",
+        signalDot: "rgba(201,125,0,0.85)",
         centerFill: "rgba(201,125,0,0.10)",
         centerStroke: "rgba(201,125,0,0.65)",
       }
@@ -453,8 +453,8 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         ctx.fill()
 
         ctx.font = n.isCenter
-          ? "600 12px 'General Sans', system-ui, sans-serif"
-          : "500 11px 'General Sans', system-ui, sans-serif"
+          ? "700 13px 'Playfair Display', Georgia, serif"
+          : "italic 400 12px 'Playfair Display', Georgia, serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
         ctx.fillStyle = C.label(!!n.isCenter, near)
@@ -1248,7 +1248,6 @@ function WhatWeDoSection() {
   const gridRef = useReveal()
   return (
     <section className="panel-section" data-rail style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
-      <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 64 }}>
           <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>What We <span className="accent-italic">Do</span></h2>
@@ -1337,7 +1336,6 @@ function WhyJoinSection() {
   const bentoRef = useReveal()
   return (
     <section data-rail style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
-      <div className="grid-overlay" data-parallax="-0.12" />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 56 }}>
           <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>Why Join <span className="accent-italic">AIS</span>?</h2>
@@ -1460,7 +1458,7 @@ function StatHandoff() {
       const end = Math.max(1, grid.getBoundingClientRect().top + window.scrollY - vh * 0.78)
       const u = clamp01(window.scrollY / end)
       const contract = 1 - HERO_CONTRACT * collapseAt()
-      const rgb = getComputedStyle(document.documentElement).getPropertyValue("--accent-2-rgb").trim() || "45, 212, 191"
+      const rgb = getComputedStyle(document.documentElement).getPropertyValue("--accent-rgb").trim() || "248, 174, 53"
 
       HANDOFF_NODES.forEach((nodeIdx, k) => {
         const uk = clamp01((u - k * 0.1) / 0.6)

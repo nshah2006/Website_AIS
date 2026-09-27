@@ -66,7 +66,6 @@
   --danger:  #F87171;
   --success: #4ADE80;
 
-  --grid-line: rgba(164,176,194,0.035);
   --spot-color: rgba(248, 174, 53, 0.10);
 
   --nav-scrolled-bg:  rgba(16,23,34,0.92);
@@ -112,7 +111,6 @@
   --danger:  #B91C1C;
   --success: #15803D;
 
-  --grid-line: rgba(40,32,20,0.04);
   --spot-color: rgba(201, 125, 0, 0.10);
 
   --nav-scrolled-bg:  rgba(247,244,236,0.93);
@@ -747,7 +745,7 @@ html.theme-switching *::after { transition: none !important; }
   transition: border-color 0.28s ease, background-color 0.28s ease, translate 0.5s var(--ease-out);
 }
 
-[data-theme="light"] .hero-viz-wrap { background: rgba(236,240,247,0.55); }
+[data-theme="light"] .hero-viz-wrap { background: rgba(253,252,248,0.55); }
 
 .hero-cta-row {
   display: flex;
@@ -906,14 +904,14 @@ html.theme-switching *::after { transition: none !important; }
   text-align: center;
   transition: background-color 0.28s ease;
 }
-/* A signal from the hero graph lands: the cell rings once in teal */
+/* A signal from the hero graph lands: the cell rings once in gold */
 .stat-cell::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  box-shadow: inset 0 0 0 1.5px rgba(var(--accent-2-rgb), 0.7);
+  box-shadow: inset 0 0 0 1.5px rgba(var(--accent-rgb), 0.7);
 }
 .stat-cell.received::after { animation: cellPing 1.3s var(--ease-out) forwards; }
 
@@ -1189,7 +1187,7 @@ html.theme-switching *::after { transition: none !important; }
 }
 
 [data-theme="light"] .bento-tile-stat {
-  background: linear-gradient(145deg, #eef1f7 0%, #e6eaf3 100%);
+  background: linear-gradient(145deg, #f3efe0 0%, #ece4cd 100%);
 }
 
 /* ─── Get Involved CTA section ──────────────────────────── */
@@ -1211,16 +1209,6 @@ html.theme-switching *::after { transition: none !important; }
   background: radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.09) 0%, transparent 70%);
   pointer-events: none;
   animation: goldPulse 5s ease-in-out infinite;
-}
-.glow-cta-section::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 52px 52px;
-  pointer-events: none;
 }
 .cta-rule {
   width: 48px;
@@ -1355,17 +1343,6 @@ html.theme-switching *::after { transition: none !important; }
   animation: fadeUp 0.45s var(--ease-out) backwards;
 }
 
-/* ─── Fine grid overlay ─────────────────────────────────── */
-
-.grid-overlay {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 44px 44px;
-  pointer-events: none;
-}
-
 /* ─── Divider ───────────────────────────────────────────── */
 
 .section-divider {
@@ -1392,7 +1369,6 @@ html.theme-switching *::after { transition: none !important; }
     transform: translate3d(0, var(--py, 0px), 0);
     will-change: transform;
   }
-  .grid-overlay[data-parallax] { inset: -160px 0; }
 }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
