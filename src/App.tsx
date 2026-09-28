@@ -453,8 +453,8 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         ctx.fill()
 
         ctx.font = n.isCenter
-          ? "700 13px 'Playfair Display', Georgia, serif"
-          : "italic 400 12px 'Playfair Display', Georgia, serif"
+          ? "600 16px 'Cormorant Garamond', Georgia, serif"
+          : "italic 500 15px 'Cormorant Garamond', Georgia, serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
         ctx.fillStyle = C.label(!!n.isCenter, near)
@@ -762,7 +762,7 @@ function Nav({
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
           >
             <img src={aisLogo} alt="AIS UTD" className="nav-logo-img" />
-            <span className="nav-wordmark" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21, color: "var(--text-primary)", letterSpacing: "-0.025em", transition: "color 0.28s ease" }}>
+            <span className="nav-wordmark" style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 24, color: "var(--text-primary)", letterSpacing: "0.02em", transition: "color 0.28s ease" }}>
               AIS{" "}
               <span style={{ fontFamily: "var(--font-body)", fontWeight: 400, fontSize: 15, color: "var(--text-secondary)", transition: "color 0.28s ease" }}>UTD</span>
             </span>
@@ -887,7 +887,7 @@ function Nav({
           <a
             href="mailto:utdallasais@gmail.com"
             className="join-btn"
-            style={{ marginTop: 36, fontSize: 16, padding: "13px 36px", animation: "fadeUp 0.38s cubic-bezier(0.16,1,0.3,1) 280ms both" }}
+            style={{ marginTop: 36, animation: "fadeUp 0.38s cubic-bezier(0.16,1,0.3,1) 280ms both" }}
           >
             Get Involved
           </a>
@@ -965,7 +965,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
           <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
             © 2026 Association for Information Systems UTD. All rights reserved.
           </span>
-          <a href="mailto:utdallasais@gmail.com" className="join-btn" style={{ fontSize: 13, padding: "7px 18px" }}>Get Involved</a>
+          <a href="mailto:utdallasais@gmail.com" className="join-btn">Get Involved</a>
         </div>
       </div>
     </footer>
@@ -1069,54 +1069,44 @@ function BentoStat({ target, suffix = "", label }: { target: number; suffix?: st
 ───────────────────────────────────────────────────────── */
 
 function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme }) {
-  const isDark = theme === "dark"
   return (
-    <section className="hero-section fx-spot fx-spot-lg" style={{ position: "relative", background: "var(--bg-primary)", overflow: "hidden", transition: "background-color 0.28s ease" }}>
-      <div aria-hidden data-parallax="-0.3" style={{
-        position: "absolute", inset: 0,
-        background: isDark
-          ? "radial-gradient(ellipse 55% 70% at 15% 50%, rgba(var(--accent-rgb),0.04) 0%, transparent 60%), radial-gradient(ellipse 70% 90% at 85% 30%, rgba(25,36,54,0.85) 0%, transparent 70%)"
-          : "radial-gradient(ellipse 55% 70% at 15% 50%, rgba(201,125,0,0.05) 0%, transparent 60%), radial-gradient(ellipse 70% 90% at 85% 30%, rgba(220,228,240,0.7) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
-      <div aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, background: "linear-gradient(to top, var(--bg-primary), transparent)", pointerEvents: "none", transition: "background 0.28s ease" }} />
+    <section className="hero-section fx-spot fx-spot-lg" style={{ position: "relative", overflow: "hidden" }}>
+      <div aria-hidden className="hero-sweep" />
+
+      <div className="hero-viz-wrap" data-parallax="-0.2" data-mouse aria-hidden>
+        <HeroVizCanvas theme={theme} />
+      </div>
+      <div aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, zIndex: 1, background: "linear-gradient(to top, var(--bg-primary), transparent)", pointerEvents: "none" }} />
 
       <div className="hero-layout">
         <div className="hero-content" data-parallax="-0.08">
+          <p className="eyebrow anim-fade-in" style={{ animationDelay: "60ms" }}>
+            Association for Information Systems · UT Dallas
+          </p>
+
           <h1 className="hero-title">
             <span className="hl"><span className="hl-in" style={{ "--d": "150ms" } as React.CSSProperties}>Where business</span></span>
-            <span className="hl">
-              <span className="hl-in" style={{ "--d": "280ms" } as React.CSSProperties}>
-                meets <span className="hl-accent">technology.</span>
-              </span>
-            </span>
+            <span className="hl"><span className="hl-in hl-italic" style={{ "--d": "290ms" } as React.CSSProperties}>meets technology.</span></span>
           </h1>
 
-          <p className="anim-fade-up" style={{ color: "var(--text-secondary)", fontSize: "clamp(15px, 1.8vw, 17px)", lineHeight: 1.72, maxWidth: 500, margin: "0 0 38px", animationDelay: "650ms" }}>
-            AIS UTD is the Association for Information Systems at UT Dallas, a student organization connecting information systems, business, and data — building skills, creating industry connections, and growing community. Open to every major.
+          <p className="hero-sub anim-fade-up" style={{ animationDelay: "650ms" }}>
+            AIS UTD is a UT Dallas student organization connecting information systems, business, and data — building skills, creating industry connections, and growing community. Open to every major.
           </p>
 
           <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "800ms" }}>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 15, padding: "13px 28px" }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
               Get Involved
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
-            <button onClick={() => setPage("events")} className="ghost-btn">
+            <button onClick={() => setPage("events")} className="ghost-btn" data-magnetic>
               Explore Events
             </button>
           </div>
-
-        </div>
-
-        <div className="hero-viz-wrap" data-parallax="-0.2" data-mouse>
-          <HeroVizCanvas theme={theme} />
-          <div aria-hidden style={{ position: "absolute", inset: -1, borderRadius: 16, background: "linear-gradient(135deg, rgba(var(--accent-rgb),0.06) 0%, transparent 50%, rgba(var(--accent-rgb),0.04) 100%)", pointerEvents: "none" }} />
         </div>
       </div>
 
-      <div aria-hidden className="hero-scroll-mouse" style={{ position: "absolute", bottom: 28, left: "50%", animation: "scrollBob 2.6s ease-in-out infinite, fadeIn 1s ease 1s both", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-        <div style={{ width: 22, height: 34, border: "1.5px solid var(--border-subtle)", borderRadius: 11, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "5px 0" }}>
-          <div style={{ width: 2.5, height: 7, background: "rgba(var(--accent-rgb),0.55)", borderRadius: 2 }} />
+      <div aria-hidden className="hero-scroll-mouse" style={{ position: "absolute", bottom: 28, left: "50%", zIndex: 2, animation: "scrollBob 2.6s ease-in-out infinite, fadeIn 1s ease 1s both", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 22, height: 34, border: "1px solid var(--border-subtle)", borderRadius: 11, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "5px 0" }}>
+          <div style={{ width: 2, height: 7, background: "var(--text-secondary)", opacity: 0.6, borderRadius: 2 }} />
         </div>
       </div>
     </section>
@@ -1365,7 +1355,7 @@ function WhyJoinSection() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 14 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
               Join today
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
@@ -1394,7 +1384,7 @@ function GetInvolvedSection() {
           Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
         </p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-          <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 16, padding: "14px 36px" }}>
+          <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
             Join AIS UTD
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </a>
@@ -1843,7 +1833,7 @@ function ContactPage() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ fontSize: 15, padding: "12px 28px", marginBottom: 28 }}>
+            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ marginBottom: 28 }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>

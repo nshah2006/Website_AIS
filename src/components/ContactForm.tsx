@@ -118,7 +118,7 @@ export default function ContactForm({ onClose, source = "website", inline = fals
           type="submit"
           disabled={!isValid || status === "loading"}
           className="join-btn"
-          style={{ fontSize: 15, padding: "13px 28px", justifyContent: "center" }}
+          style={{ alignSelf: "center" }}
         >
           {status === "loading" ? "Sending…" : "Get Involved"}
         </button>
