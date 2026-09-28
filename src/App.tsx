@@ -529,43 +529,6 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
 }
 
 /* ─────────────────────────────────────────────────────────
-   Pillar icons
-───────────────────────────────────────────────────────── */
-
-const LearnIcon = () => (
-  <svg width="42" height="42" viewBox="0 0 42 42" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 5 L38 14 L21 23 L4 14 Z" />
-    <path d="M38 14 L38 26" />
-    <path d="M10 18 L10 30 C10 30 15 35 21 35 C27 35 32 30 32 30 L32 18" />
-    <circle cx="38" cy="28" r="2.5" fill="currentColor" stroke="none" opacity="0.6" />
-  </svg>
-)
-
-const BuildIcon = () => (
-  <svg width="42" height="42" viewBox="0 0 42 42" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="5" y="21" width="13" height="13" rx="2" />
-    <rect x="24" y="21" width="13" height="13" rx="2" />
-    <rect x="14" y="7" width="14" height="11" rx="2" />
-    <line x1="11.5" y1="21" x2="11.5" y2="18" />
-    <line x1="30.5" y1="21" x2="30.5" y2="18" />
-    <line x1="11.5" y1="18" x2="21" y2="18" />
-    <line x1="30.5" y1="18" x2="21" y2="18" />
-  </svg>
-)
-
-const ConnectIcon = () => (
-  <svg width="42" height="42" viewBox="0 0 42 42" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-    <circle cx="21" cy="9" r="4.5" />
-    <circle cx="8" cy="32" r="4.5" />
-    <circle cx="34" cy="32" r="4.5" />
-    <line x1="17.5" y1="12.5" x2="11" y2="28" />
-    <line x1="24.5" y1="12.5" x2="31" y2="28" />
-    <line x1="12.5" y1="32" x2="29.5" y2="32" />
-    <circle cx="21" cy="26" r="2" fill="currentColor" opacity="0.5" stroke="none" />
-  </svg>
-)
-
-/* ─────────────────────────────────────────────────────────
    Shared socials
 ───────────────────────────────────────────────────────── */
 
@@ -1228,9 +1191,9 @@ function StatsSection() {
 ───────────────────────────────────────────────────────── */
 
 const PILLARS = [
-  { Icon: LearnIcon, BgIcon: LearnIcon, label: "Learn", desc: "Technical workshops, industry insights, and practical skill development in SQL, Python, Excel, cloud platforms, and more." },
-  { Icon: BuildIcon, BgIcon: BuildIcon, label: "Build", desc: "Case competitions, hackathons, and hands-on projects that put your skills to work and prepare you for real industry challenges." },
-  { Icon: ConnectIcon, BgIcon: ConnectIcon, label: "Connect", desc: "Industry professionals, recruiters from 18+ partner companies, and a community of students passionate about business and technology." },
+  { label: "Learn", desc: "Technical workshops, industry insights, and practical skill development in SQL, Python, Excel, cloud platforms, and more." },
+  { label: "Build", desc: "Case competitions, hackathons, and hands-on projects that put your skills to work and prepare you for real industry challenges." },
+  { label: "Connect", desc: "Industry professionals, recruiters from 18+ partner companies, and a community of students passionate about business and technology." },
 ]
 
 function WhatWeDoSection() {
@@ -1239,19 +1202,15 @@ function WhatWeDoSection() {
   return (
     <section className="panel-section" data-rail style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 64 }}>
-          <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>What We <span className="accent-italic">Do</span></h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 520, margin: "0 auto", lineHeight: 1.72 }}>
-            Three pillars that define every AIS UTD experience — from your first meeting to your first offer.
-          </p>
+        <div ref={headRef} className="reveal-head pillar-head">
+          <h2 className="section-heading" style={{ fontSize: "clamp(34px, 4.6vw, 56px)", margin: 0 }}>What We <span className="accent-italic">Do</span></h2>
+          <p>Three pillars that define every AIS UTD experience — from your first meeting to your first offer.</p>
         </div>
-        <div ref={gridRef} className="reveal-stagger pillar-cards-grid" style={{ "--step": "110ms" } as React.CSSProperties}>
-          {PILLARS.map(({ Icon, BgIcon, label, desc }, i) => (
-            <div key={label} className="pillar-card fx-spot" data-tilt="1" style={{ "--i": i } as React.CSSProperties}>
-              <div className="pillar-bg-icon"><BgIcon /></div>
-              <div className="pillar-icon"><Icon /></div>
-              <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 27, color: "var(--text-primary)", margin: "0 0 10px" }}>{label}</h3>
-              <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.68, margin: 0 }}>{desc}</p>
+        <div ref={gridRef} className="reveal-stagger pillar-list" style={{ "--step": "140ms" } as React.CSSProperties}>
+          {PILLARS.map(({ label, desc }, i) => (
+            <div key={label} className="pillar-row" style={{ "--i": i } as React.CSSProperties}>
+              <h3 className="pillar-word">{label}</h3>
+              <p className="pillar-desc">{desc}</p>
             </div>
           ))}
         </div>
@@ -1265,52 +1224,79 @@ function WhatWeDoSection() {
 ───────────────────────────────────────────────────────── */
 
 const UPCOMING = [
-  { name: "Tech for Good Hackathon", date: "Sep 20, 2026", type: "Hackathon", desc: "24-hour challenge building data-driven solutions for nonprofits.", partner: "Microsoft", photo: "1550751827-4bd374c3f58b" },
+  { name: "Poker Night", date: "Date TBA", type: "Social", desc: "Details coming soon.", partner: null, photo: "1704121421071-72b8509da9a8" },
   { name: "SQL & Python Workshop", date: "Sep 27, 2026", type: "Workshop", desc: "Hands-on session covering data querying and scripting fundamentals.", partner: null, photo: "1516321318423-f06f85e504b3" },
   { name: "Networking Night", date: "Oct 5, 2026", type: "Networking", desc: "Connect with consulting and tech recruiters over a structured mixer.", partner: "Deloitte", photo: "1515187029135-18ee286d815b" },
 ]
 
+/* "Sep 20, 2026" -> { month: "Sep", day: "20" }; anything else (e.g.
+   "Date TBA") comes back as a label with no day */
+const splitDate = (d: string) => {
+  const m = d.match(/^([A-Za-z]{3})\w* (\d{1,2})/)
+  return m ? { month: m[1], day: m[2] } : { month: d, day: "" }
+}
+
 function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
   const headRef = useReveal()
-  const gridRef = useReveal()
+  const bodyRef = useReveal()
+  const [next, ...later] = UPCOMING
+  const nd = splitDate(next.date)
   return (
     <section data-rail style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-        <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 44, flexWrap: "wrap", gap: 20 }}>
+        <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 52, flexWrap: "wrap", gap: 20 }}>
           <div>
-            <h2 className="section-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 8px" }}>Upcoming <span className="accent-italic">Events</span></h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>What's happening this semester at AIS UTD.</p>
+            <h2 className="section-heading" style={{ fontSize: "clamp(34px, 4.6vw, 56px)", margin: "0 0 10px" }}>Upcoming <span className="accent-italic">Events</span></h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: 16, margin: 0 }}>What's happening this semester at AIS UTD.</p>
           </div>
-          <button onClick={() => setPage("events")} className="text-link">
+          <button onClick={() => setPage("events")} className="ghost-btn">
             View All Events
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
         </div>
-        <div ref={gridRef} className="reveal-stagger events-grid" style={{ "--step": "90ms" } as React.CSSProperties}>
-          {UPCOMING.map((ev, i) => (
-            <div key={ev.name} className="event-card fx-spot" data-tilt="0.5" style={{ "--i": i } as React.CSSProperties}>
-              <div className="event-card-photo">
-                <img
-                  loading="lazy"
-                  src={`https://images.unsplash.com/photo-${ev.photo}?w=640&h=480&fit=crop&auto=format`}
-                  alt={ev.name}
-                />
+
+        <div ref={bodyRef} className="reveal-stagger ev-spread" style={{ "--step": "160ms" } as React.CSSProperties}>
+          {/* The next event, given the room */}
+          <article className="ev-feature" style={{ "--i": 0 } as React.CSSProperties}>
+            <div className="ev-feature-photo">
+              <img
+                loading="lazy"
+                src={`https://images.unsplash.com/photo-${next.photo}?w=1100&h=760&fit=crop&auto=format`}
+                alt={next.name}
+              />
+            </div>
+            <div className="ev-feature-caption">
+              <div className="ev-feature-date">
+                {nd.day && <span className="ev-day">{nd.day}</span>}
+                <span className="ev-month">{nd.month}</span>
               </div>
-              <div className="event-card-body">
-                <div className="event-card-meta">
-                  <span className={`tag ${ev.type === "Workshop" ? "tag--accent-2" : "tag--accent"}`}>{ev.type}</span>
-                  {ev.partner && <span className="tag" style={{ fontWeight: 400 }}>{ev.partner}</span>}
-                </div>
-                <span className="event-card-date">{ev.date}</span>
-                <h3 className="event-card-title">{ev.name}</h3>
-                <p className="event-card-desc">{ev.desc}</p>
-                <span className="event-card-action">
-                  View Details
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                </span>
+              <div>
+                <p className="ev-meta">{next.type}{next.partner && <> · with {next.partner}</>}</p>
+                <h3 className="ev-feature-title">{next.name}</h3>
+                <p className="ev-feature-desc">{next.desc}</p>
               </div>
             </div>
-          ))}
+          </article>
+
+          {/* Everything after it, as an agenda */}
+          <div className="ev-agenda" style={{ "--i": 1 } as React.CSSProperties}>
+            <p className="eyebrow" style={{ margin: "0 0 8px" }}>Also coming up</p>
+            {later.map((ev) => {
+              const d = splitDate(ev.date)
+              return (
+                <div key={ev.name} className="ev-row">
+                  <div className="ev-row-date">
+                    <span className="ev-day">{d.day}</span>
+                    <span className="ev-month">{d.month}</span>
+                  </div>
+                  <div>
+                    <p className="ev-meta">{ev.type}{ev.partner && <> · with {ev.partner}</>}</p>
+                    <h3 className="ev-row-title">{ev.name}</h3>
+                    <p className="ev-row-desc">{ev.desc}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </section>
@@ -1900,7 +1886,7 @@ function MobileCta({ page }: { page: Page }) {
 function useTouchFocus(page: Page) {
   useEffect(() => {
     if (!window.matchMedia("(hover: none)").matches) return
-    const sel = ".pillar-card, .bento-tile, .event-card, .event-photo-card, .np-story"
+    const sel = ".pillar-row, .bento-tile, .ev-feature, .ev-row, .event-photo-card, .np-story"
     const io = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.target.classList.toggle("is-active", e.isIntersecting)),
       { rootMargin: "-38% 0px -38% 0px" },
