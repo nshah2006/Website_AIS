@@ -142,8 +142,8 @@ export default function ContactForm({ onClose, source = "website", inline = fals
           id="contact-form-title"
           style={{
             fontFamily: "var(--font-headline)",
-            fontWeight: 700,
-            fontSize: 24,
+            fontWeight: 500,
+            fontSize: 30,
             color: "var(--text-primary)",
             margin: "0 0 8px",
             letterSpacing: "-0.01em",

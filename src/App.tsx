@@ -276,19 +276,19 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
         centerStroke: "rgba(248,174,53,0.68)",
       }
     : {
-        edge: "rgba(90,75,55,0.18)",
+        edge: "rgba(30,50,85,0.2)",
         nodeFill: (near: boolean) =>
           near ? "rgba(201,125,0,0.10)" : "rgba(253,252,248,0.55)",
         nodeStroke: (near: boolean) =>
-          near ? "rgba(201,125,0,0.5)" : "rgba(90,75,55,0.3)",
+          near ? "rgba(201,125,0,0.5)" : "rgba(30,50,85,0.32)",
         dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(201,125,0,0.9)" : "rgba(90,75,55,0.55)",
+          center || near ? "rgba(201,125,0,0.9)" : "rgba(30,50,85,0.55)",
         label: (center: boolean, near: boolean) =>
           center
             ? "rgba(146,87,0,1)"
             : near
               ? "rgba(146,87,0,0.9)"
-              : "rgba(60,50,38,0.8)",
+              : "rgba(19,35,58,0.8)",
         ringOuter: (a: number) => `rgba(201,125,0,${a})`,
         ringInner: "rgba(201,125,0,0.18)",
         signalGlow0: "rgba(201,125,0,0.22)",
@@ -871,10 +871,10 @@ function Nav({
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                fontFamily: "var(--font-display)",
-                fontWeight: 700,
-                fontSize: "clamp(26px, 8vw, 40px)",
-                letterSpacing: "-0.03em",
+                fontFamily: "var(--font-headline)",
+                fontWeight: 500,
+                fontSize: "clamp(32px, 9vw, 46px)",
+                letterSpacing: "0",
                 color: page === l.page ? "var(--accent-text)" : "var(--text-primary)",
                 padding: "8px 0",
                 transition: "color 0.15s",
@@ -925,7 +925,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <img src={aisLogo} alt="AIS UTD" style={{ height: 38, width: 38, borderRadius: "50%", objectFit: "cover" }} />
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>AIS UTD</div>
+                <div style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 20, color: "var(--text-primary)", letterSpacing: "0.02em" }}>AIS UTD</div>
                 <div style={{ color: "var(--text-secondary)", fontSize: 11 }}>University of Texas at Dallas</div>
               </div>
             </div>
@@ -939,7 +939,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
 
           {/* Links */}
           <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 18 }}>Pages</div>
+            <div className="eyebrow" style={{ margin: "0 0 18px" }}>Pages</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {NAV_LINKS.map((l) => (
                 <button key={l.page} onClick={() => setPage(l.page)} className="quiet-link">
@@ -951,7 +951,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
 
           {/* Contact */}
           <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", marginBottom: 18 }}>Contact</div>
+            <div className="eyebrow" style={{ margin: "0 0 18px" }}>Contact</div>
             <a href="mailto:utdallasais@gmail.com" className="quiet-link" style={{ display: "block", marginBottom: 8 }}>
               ais@utdallas.edu
             </a>
@@ -1043,7 +1043,7 @@ function StatCounter({ target, label, suffix = "+", delay = 0 }: { target: numbe
       <div className="stat-inner">
         <div className="stat-cell-number">
           {count.toLocaleString()}
-          <span style={{ color: "var(--accent-2)" }}>{suffix}</span>
+          <span style={{ color: "var(--accent-text)" }}>{suffix}</span>
         </div>
         <div className="stat-cell-label">{label}</div>
       </div>
@@ -1250,7 +1250,7 @@ function WhatWeDoSection() {
             <div key={label} className="pillar-card fx-spot" data-tilt="1" style={{ "--i": i } as React.CSSProperties}>
               <div className="pillar-bg-icon"><BgIcon /></div>
               <div className="pillar-icon"><Icon /></div>
-              <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 22, color: "var(--text-primary)", letterSpacing: "-0.01em", margin: "0 0 10px" }}>{label}</h3>
+              <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 27, color: "var(--text-primary)", margin: "0 0 10px" }}>{label}</h3>
               <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.68, margin: 0 }}>{desc}</p>
             </div>
           ))}
@@ -1335,7 +1335,7 @@ function WhyJoinSection() {
         </div>
         <div ref={bentoRef} className="reveal-stagger bento-grid" style={{ "--step": "100ms" } as React.CSSProperties}>
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 0 } as React.CSSProperties}>
-            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 14, lineHeight: 1.2 }}>Industry Access</h3>
+            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: "clamp(24px, 2.4vw, 30px)", color: "var(--text-primary)", marginBottom: 14, lineHeight: 1.15 }}>Industry Access</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 24px", maxWidth: 420 }}>
               Direct access to 18+ leading companies through tech talks, recruiting panels, and company information sessions. Resume workshops and career prep from professionals who've been there.
             </p>
@@ -1351,7 +1351,7 @@ function WhyJoinSection() {
           <BentoStat target={8} label="Events every semester — workshops, talks, competitions, and socials" />
 
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 3 } as React.CSSProperties}>
-            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: "clamp(18px, 2vw, 24px)", color: "var(--text-primary)", letterSpacing: "-0.01em", marginBottom: 14, lineHeight: 1.2 }}>Open to Every Major</h3>
+            <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: "clamp(24px, 2.4vw, 30px)", color: "var(--text-primary)", marginBottom: 14, lineHeight: 1.15 }}>Open to Every Major</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
@@ -1378,12 +1378,12 @@ function GetInvolvedSection() {
         <div className="cta-rule" />
         <h2 className="section-heading" style={{ fontSize: "clamp(34px, 5.5vw, 58px)", margin: "0 0 20px", lineHeight: 1.03 }}>
           Ready to build your<br />
-          <span style={{ color: "var(--accent-text)" }}>future here?</span>
+          <span className="accent-italic">future here?</span>
         </h2>
         <p style={{ color: "var(--text-secondary)", fontSize: 17, lineHeight: 1.72, maxWidth: 480, margin: "0 auto 44px" }}>
           Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
         </p>
-        <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 40, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
           <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
             Join AIS UTD
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
@@ -1748,16 +1748,16 @@ function EventsPage() {
                   className={`event-photo-img${imageLoaded.has(idx) ? " image-loaded" : ""}`}
                   style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: imageLoaded.has(idx) ? 1 : 0.7 }}
                 />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(16,23,34,0.92) 0%, rgba(16,23,34,0.35) 55%, transparent 100%)" }} />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(10,20,34,0.92) 0%, rgba(10,20,34,0.35) 55%, transparent 100%)" }} />
                 {ev.partner && (
-                  <span style={{ position: "absolute", top: 12, right: 12, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(16,23,34,0.8)", border: "1px solid rgba(var(--accent-rgb),0.28)", borderRadius: 4, padding: "3px 10px", backdropFilter: "blur(6px)" }}>
+                  <span style={{ position: "absolute", top: 12, right: 12, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(10,20,34,0.8)", border: "1px solid rgba(var(--accent-rgb),0.28)", borderRadius: 4, padding: "3px 10px", backdropFilter: "blur(6px)" }}>
                     {ev.partner}
                   </span>
                 )}
                 <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 16px 16px" }}>
-                  <div style={{ color: "#A4B0C2", fontSize: 11, letterSpacing: "0.04em", marginBottom: 5 }}>{ev.date}</div>
-                  <div style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 16, color: "#F8F9FC", letterSpacing: "-0.005em", lineHeight: 1.2 }}>{ev.name}</div>
-                  {ev.partner && <div style={{ color: "#A4B0C2", fontSize: 12, marginTop: 3 }}>with {ev.partner}</div>}
+                  <div style={{ color: "#C9C2B3", fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>{ev.date}</div>
+                  <div style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 21, color: "#F2ECDF", lineHeight: 1.15 }}>{ev.name}</div>
+                  {ev.partner && <div style={{ color: "#C9C2B3", fontSize: 12, fontStyle: "italic", marginTop: 3 }}>with {ev.partner}</div>}
                 </div>
               </div>
             </div>
@@ -1811,7 +1811,7 @@ function ContactPage() {
         <div ref={ref} className="reveal-stagger contact-layout" style={{ "--step": "140ms" } as React.CSSProperties}>
           <div style={{ "--i": 0 } as React.CSSProperties}>
             <div style={{ marginBottom: 48 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "var(--text-secondary)", letterSpacing: "0.05em", marginBottom: 18 }}>FIND US ON</div>
+              <div className="eyebrow" style={{ margin: "0 0 18px" }}>Find us on</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {SOCIALS.map((s) => <ContactSocialBtn key={s.label} {...s} />)}
               </div>
@@ -1829,7 +1829,7 @@ function ContactPage() {
           </div>
 
           <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "36px 32px", transition: "background-color 0.28s ease, border-color 0.28s ease", "--i": 1 } as React.CSSProperties}>
-            <h2 style={{ fontFamily: "var(--font-headline)", fontWeight: 700, fontSize: 24, color: "var(--text-primary)", letterSpacing: "-0.01em", margin: "0 0 12px", lineHeight: 1.15 }}>Ready to join?</h2>
+            <h2 style={{ fontFamily: "var(--font-headline)", fontWeight: 500, fontSize: 32, color: "var(--text-primary)", margin: "0 0 12px", lineHeight: 1.1 }}>Ready to <span className="accent-italic">join?</span></h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>

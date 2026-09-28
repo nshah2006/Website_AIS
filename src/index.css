@@ -1,8 +1,6 @@
 @import 'tailwindcss';
 
-/* Self-hosted Fontshare fonts (Clash Display, General Sans) */
-@font-face { font-family: 'Clash Display'; src: url('/fonts/clash-display-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Clash Display'; src: url('/fonts/clash-display-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+/* Self-hosted Fontshare body face (General Sans) */
 @font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: 'General Sans'; src: url('/fonts/general-sans-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
@@ -16,10 +14,6 @@
 @font-face { font-family: 'Cormorant Garamond'; src: url('/fonts/cormorant-garamond-500-italic.woff2') format('woff2'); font-weight: 500; font-style: italic; font-display: swap; }
 
 @theme inline {
-  /* Compact UI voice: nav wordmark, buttons, tags, big numeric stats.
-     Never prose — anything a reader would call a "headline" uses
-     --font-headline instead. */
-  --font-display: 'Clash Display', sans-serif;
   --font-body: 'General Sans', sans-serif;
   /* Headline voice: hero, section headings, page titles, card titles —
      any content headline. Editorial serif; italic for secondary emphasis. */
@@ -94,12 +88,13 @@
   --bg-footer:    #EAE3D0;
   --bg-panel:     #E7EBDA;
 
-  --text-primary:   #1C1810;
-  --text-secondary: #5C5344;
-  --text-muted:     #7A7160;
+  /* Navy ink on cream: the dark theme's palette, inverted */
+  --text-primary:   #13233A;
+  --text-secondary: #46536A;
+  --text-muted:     #5F6878;
 
-  --border-subtle: rgba(40,32,20,0.10);
-  --border-faint:  rgba(40,32,20,0.05);
+  --border-subtle: rgba(19,35,58,0.11);
+  --border-faint:  rgba(19,35,58,0.05);
 
   /* Amber fills carry dark text; amber used AS text steps down to a readable brown-gold */
   --accent:       #C97D00;
@@ -120,14 +115,15 @@
 
   --nav-scrolled-bg:  rgba(247,244,236,0.93);
   --nav-default-bg:   rgba(247,244,236,0);
-  --nav-border-color: rgba(40,32,20,0.09);
+  --nav-border-color: rgba(19,35,58,0.1);
 
+  /* Parchment lit from the upper left, a cool navy mist in the far corner */
   --hero-bg:
-    radial-gradient(ellipse 70% 60% at 22% 18%, rgba(255,255,255,0.9) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 70% at 88% 92%, rgba(214,202,176,0.55) 0%, transparent 70%),
-    linear-gradient(162deg, #FBF9F3 0%, #F4EFE3 50%, #ECE5D4 100%);
-  --hero-sweep: rgba(255,255,255,0.7);
-  --grain-opacity: 0.05;
+    radial-gradient(ellipse 70% 60% at 22% 18%, rgba(255,253,247,0.95) 0%, transparent 65%),
+    radial-gradient(ellipse 65% 70% at 90% 95%, rgba(40,64,104,0.14) 0%, transparent 70%),
+    linear-gradient(162deg, #FBF8F0 0%, #F2ECDF 48%, #E7DFCB 100%);
+  --hero-sweep: rgba(255,255,255,0.85);
+  --grain-opacity: 0.065;
 
   --logo-filter:        brightness(0) contrast(1.1);
   --logo-opacity:       0.75;
@@ -758,7 +754,7 @@ html.theme-switching *::after { transition: none !important; }
   background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 55%, rgba(4,10,20,0.45) 100%);
 }
 [data-theme="light"] .hero-section::before {
-  background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 60%, rgba(120,100,60,0.12) 100%);
+  background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 58%, rgba(19,35,58,0.13) 100%);
 }
 
 .hero-layout {
@@ -953,15 +949,28 @@ html.theme-switching *::after { transition: none !important; }
   opacity: 1;
 }
 
+/* ─── Footer in light mode ───────────────────────────────────
+   Cream paper above, a navy band below — the footer re-declares the
+   dark theme's ink tokens locally, so everything inside inverts. */
+[data-theme="light"] footer {
+  --bg-footer:      #13233A;
+  --text-primary:   #F2ECDF;
+  --text-secondary: #C3BCAE;
+  --text-muted:     #968F82;
+  --border-subtle:  rgba(242,236,223,0.1);
+  --accent-text:    #F8AE35;
+  color-scheme: dark;
+}
+
 /* ─── Page section header ───────────────────────────────── */
 
 .page-header {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
-  padding: 56px 24px 52px;
+  padding: 64px 0 56px;
   transition: background-color 0.28s ease, border-color 0.28s ease;
 }
-.page-header-inner { max-width: 1200px; margin: 0 auto; }
+.page-header-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .page-header h1 {
   font-family: var(--font-headline);
   font-weight: 500;
@@ -1002,19 +1011,20 @@ html.theme-switching *::after { transition: none !important; }
 .stat-cell.received::after { animation: cellPing 1.3s var(--ease-out) forwards; }
 
 .stat-cell-number {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(40px, 5.5vw, 58px);
+  font-family: var(--font-headline);
+  font-weight: 500;
+  font-size: clamp(46px, 6vw, 68px);
   color: var(--text-primary);
-  letter-spacing: -0.046em;
+  letter-spacing: -0.01em;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .stat-cell-label {
   color: var(--text-muted);
-  font-size: 13px;
-  margin-top: 10px;
-  letter-spacing: 0.02em;
+  font-size: 11px;
+  margin-top: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
   line-height: 1.4;
 }
 
@@ -1261,14 +1271,14 @@ html.theme-switching *::after { transition: none !important; }
 .bento-tile-stat .stat-big {
   translate: calc(var(--cx, 0) * 6px) calc(var(--cy, 0) * 6px);
   transition: translate 0.4s var(--ease-out);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(48px, 6vw, 68px);
+  font-family: var(--font-headline);
+  font-weight: 500;
+  font-size: clamp(56px, 6.6vw, 80px);
   color: var(--text-primary);
-  letter-spacing: -0.05em;
+  letter-spacing: -0.01em;
   line-height: 1;
   margin-bottom: 8px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 [data-theme="light"] .bento-tile-stat {
