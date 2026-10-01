@@ -968,7 +968,7 @@ function Nav({
             <div className="mobile-menu-socials">
               {SOCIALS.map((s) => <SocialBtn key={s.label} {...s} />)}
             </div>
-            <a href="mailto:utdallasais@gmail.com" className="quiet-link">ais@utdallas.edu</a>
+            <a href="mailto:utdallasais@gmail.com" className="quiet-link">utdallasais@gmail.com</a>
           </div>
         </div>
       )}
@@ -1026,7 +1026,7 @@ function Footer({ setPage, onGetInvolved }: { setPage: (p: Page) => void; onGetI
           <div>
             <div className="eyebrow" style={{ margin: "0 0 18px" }}>Contact</div>
             <a href="mailto:utdallasais@gmail.com" className="quiet-link" style={{ display: "block", marginBottom: 8 }}>
-              ais@utdallas.edu
+              utdallasais@gmail.com
             </a>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, lineHeight: 1.55 }}>
               University of Texas at Dallas<br />Richardson, TX 75080
@@ -1485,7 +1485,7 @@ function GetInvolvedSection({ onGetInvolved }: { onGetInvolved: () => void }) {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
           <a href="mailto:utdallasais@gmail.com" className="quiet-link quiet-link--strong" style={{ fontSize: 15 }}>
-            ais@utdallas.edu
+            utdallasais@gmail.com
           </a>
         </div>
       </div>
@@ -2022,7 +2022,7 @@ function ContactPage({ onGetInvolved }: { onGetInvolved: () => void }) {
             <div>
               <div style={{ color: "var(--text-secondary)", fontSize: 13, letterSpacing: "0.04em", marginBottom: 12 }}>General inquiries</div>
               <a href="mailto:utdallasais@gmail.com" className="email-link">
-                ais@utdallas.edu
+                utdallasais@gmail.com
               </a>
               <div style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 20, lineHeight: 1.6 }}>
                 University of Texas at Dallas<br />Richardson, TX 75080
