@@ -114,9 +114,17 @@ function Section({ title, bodyClass, step = 90, children }: { title: string; bod
   )
 }
 
-export default function OfficersPage() {
+export default function OfficersPage({ onGetInvolved }: { onGetInvolved: () => void }) {
+  const ctaRef = useReveal()
   return (
     <main className="np-page">
+      <div className="page-header">
+        <div className="page-header-inner">
+          <h1>Meet the <span className="accent-italic">Officers</span></h1>
+          <p>The students leading AIS UTD this semester.</p>
+        </div>
+      </div>
+      <div className="np-body">
       <div className="np-sheet">
         {(["tl", "tr", "bl", "br"] as const).map((c) => (
           <span key={c} className={`np-corner np-corner--${c}`} aria-hidden><CornerOrnament /></span>
@@ -135,7 +143,6 @@ export default function OfficersPage() {
           <Rule delay={500} />
           <p className="np-banner"><span>Breaking News</span></p>
           <Rule delay={650} />
-          <p className="np-deck">Meet the officers leading AIS UTD this semester.</p>
         </header>
 
         <Section title="The Executive Board" bodyClass="np-exec" step={140}>
@@ -157,6 +164,11 @@ export default function OfficersPage() {
           <Rule />
           <p>The AIS Times &middot; Association for Information Systems &middot; UT Dallas</p>
         </footer>
+      </div>
+      <div ref={ctaRef} className="reveal np-cta">
+        <p>Want to work with us?</p>
+        <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>Get Involved</button>
+      </div>
       </div>
     </main>
   )

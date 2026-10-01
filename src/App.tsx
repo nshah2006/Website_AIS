@@ -2172,7 +2172,7 @@ export default function App() {
       <div className={nextPage ? "page-exit" : "page-enter"} style={{ flex: 1, position: "relative" }}>
         {page === "home"     && <HomePage setPage={navigate} theme={theme} onGetInvolved={openContactForm} />}
         {page === "events"   && <EventsPage />}
-        {page === "officers" && <OfficersPage />}
+        {page === "officers" && <OfficersPage onGetInvolved={openContactForm} />}
         {page === "contact"  && <ContactPage onGetInvolved={openContactForm} />}
         {page === "initiatives" && <InitiativesPage setPage={navigate} onGetInvolved={openContactForm} />}
       </div>

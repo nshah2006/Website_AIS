@@ -1,13 +1,9 @@
 /* ─── The AIS Times: Officers page ──────────────────────────
    The sheet is always newsprint (cream paper, dark ink), matching the
    org's printed "AIS Times" posts, and sits on whichever site theme is
-   active. Type: Grenze Gotisch (nameplate) + Playfair Display.         */
+   active. Type: Grenze Gotisch for the nameplate only; everything else uses the site's fonts.         */
 
 @font-face { font-family: 'Grenze Gotisch'; src: url('/fonts/grenze-gotisch-800.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-400-italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
-@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Playfair Display'; src: url('/fonts/playfair-display-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
 
 /* Registered so the halftone dots can animate smoothly */
 @property --dot {
@@ -23,14 +19,19 @@
   --ink-soft: #4B4335;
   --rule: rgba(42, 33, 22, 0.6);
   --rule-soft: rgba(42, 33, 22, 0.24);
-  --serif: 'Playfair Display', 'Times New Roman', serif;
+  --serif: var(--font-headline);
+  --np-accent: #A8650A;
   --black-letter: 'Grenze Gotisch', 'Old English Text MT', serif;
 
   background: var(--bg-primary);
   min-height: 100vh;
-  padding: calc(var(--nav-h) + 40px) 24px 88px;
+  padding-top: var(--nav-h);
   transition: background-color 0.28s ease;
 }
+.np-body { padding: 48px 24px 88px; }
+/* Light theme: a deeper page tone so the cream sheet stays distinct */
+[data-theme="light"] .np-page { background: #E4DCC8; }
+[data-theme="light"] .np-sheet { box-shadow: 0 30px 60px -30px rgba(42, 33, 22, 0.45), 0 0 0 1px rgba(42, 33, 22, 0.08); }
 
 .np-sheet {
   position: relative;
@@ -53,6 +54,7 @@
 }
 
 .np-corner {
+  display: none;
   position: absolute;
   width: 34px;
   height: 34px;
@@ -117,7 +119,10 @@
   gap: 16px;
   margin: 16px 0 12px;
   padding: 0 4px;
-  font-size: clamp(13px, 1.8vw, 20px);
+  font-family: var(--font-body);
+  font-size: clamp(12px, 1.4vw, 15px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   font-variant-numeric: lining-nums;
   color: var(--ink);
   animation: headIn 0.9s var(--ease-out) 0.55s backwards;
@@ -141,11 +146,11 @@
 .np-rule::before { transform-origin: right; }
 .np-rule::after  { transform-origin: left; }
 /* centre dot */
-.np-rule { background: radial-gradient(circle at center, var(--ink) 3.5px, transparent 4px) center / 8px 8px no-repeat; }
+.np-rule { background: radial-gradient(circle at center, var(--np-accent) 3.5px, transparent 4px) center / 8px 8px no-repeat; }
 
 .np-banner {
   margin: 22px 0;
-  font-weight: 900;
+  font-weight: 600;
   font-size: clamp(24px, 6.6vw, 88px);
   line-height: 1;
   letter-spacing: 0.005em;
@@ -154,15 +159,7 @@
 }
 .np-banner span {
   padding: 0 0.28em;
-  background: linear-gradient(to bottom, transparent 22%, rgba(70, 55, 35, 0.1) 22%, rgba(70, 55, 35, 0.1) 84%, transparent 84%);
-}
-
-.np-deck {
-  margin: 24px 0 0;
-  font-style: italic;
-  font-size: clamp(15px, 2vw, 19px);
-  color: var(--ink-soft);
-  animation: fadeIn 0.9s ease 0.95s backwards;
+  background: linear-gradient(to bottom, transparent 22%, rgba(var(--accent-rgb), 0.38) 22%, rgba(var(--accent-rgb), 0.38) 84%, transparent 84%);
 }
 
 /* ─── Sections ─────────────────────────────────────────── */
@@ -175,8 +172,9 @@
   align-items: center;
   gap: 18px;
   margin: 0;
-  font-size: clamp(12px, 1.5vw, 15px);
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: clamp(12px, 1.5vw, 14px);
+  font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--ink);
@@ -246,34 +244,34 @@
 .np-byline { min-width: 0; }
 .np-role {
   margin: 0 0 4px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--np-accent);
   text-transform: uppercase;
 }
 .np-name {
   margin: 0;
-  font-weight: 400;
-  font-size: 18px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 .np-major {
   margin: 8px 0 0;
-  font-style: italic;
-  font-size: 15px;
-  line-height: 1.35;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--ink-soft);
 }
 
-.np-story--lead .np-role  { font-size: clamp(16px, 2vw, 21px); }
-.np-story--lead .np-name  { font-size: clamp(24px, 3.4vw, 38px); letter-spacing: 0.03em; }
-.np-story--lead .np-major { font-size: clamp(15px, 1.8vw, 19px); }
+.np-story--lead .np-role  { font-size: 13px; }
+.np-story--lead .np-name  { font-size: clamp(30px, 4vw, 46px); }
+.np-story--lead .np-major { font-size: 14px; }
 
-.np-story--brief .np-role  { font-size: 14px; }
-.np-story--brief .np-name  { font-size: clamp(17px, 2.1vw, 22px); }
+.np-story--brief .np-role  { font-size: 12px; }
+.np-story--brief .np-name  { font-size: clamp(20px, 2.4vw, 26px); }
 
 /* ─── Portrait ─────────────────────────────────────────── */
 
@@ -290,7 +288,7 @@
   position: absolute;
   width: 30px;
   height: 30px;
-  border: 0 solid var(--ink-soft);
+  border: 0 solid var(--np-accent);
   pointer-events: none;
   z-index: 2;
 }
@@ -354,8 +352,9 @@
 .np-foot { margin-top: clamp(44px, 6vw, 68px); text-align: center; }
 .np-foot p {
   margin: 16px 0 0;
-  font-style: italic;
-  font-size: 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 0.08em;
   color: var(--ink-soft);
 }
 
@@ -371,15 +370,17 @@
 }
 
 @media (max-width: 520px) {
-  .np-page { padding-left: 12px; padding-right: 12px; }
   .np-grid { column-gap: 24px; }
   .np-grid > .np-story + .np-story::before { left: -12px; }
-  .np-name { font-size: 15px; }
-  .np-role { font-size: 13px; }
-  .np-major { font-size: 14px; }
+  .np-name { font-size: 20px; }
+  .np-major { font-size: 12px; }
+  .np-body { padding: 32px 12px 72px; }
   .np-dateline { flex-direction: column; gap: 2px; align-items: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .np-photo-in::after { display: none; }
 }
+
+.np-cta { max-width: 1120px; margin: 56px auto 0; text-align: center; }
+.np-cta p { margin: 0 0 22px; font-family: var(--font-headline); font-size: clamp(26px, 3.4vw, 38px); color: var(--text-primary); }
