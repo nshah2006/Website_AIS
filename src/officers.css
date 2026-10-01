@@ -374,7 +374,18 @@
   .np-grid > .np-story + .np-story::before { left: -12px; }
   .np-name { font-size: 20px; }
   .np-major { font-size: 12px; }
-  .np-body { padding: 32px 12px 72px; }
+  .np-body { padding: 24px 10px 64px; }
+  .np-sheet { padding: 26px 14px 24px; }
+  .np-sheet::before { inset: 6px; }
+  .np-section { margin-top: 36px; }
+  .np-section-head { margin-bottom: 22px; }
+  .np-section-head h2 { gap: 12px; letter-spacing: 0.16em; }
+  .np-grid { row-gap: 28px; }
+  .np-story--brief { gap: 16px; }
+  .np-story--brief .np-photo { flex-basis: 92px; }
+  .np-cta { margin-top: 40px; }
+  .np-cta p { margin-bottom: 18px; }
+  .page-header { padding: 40px 0 36px; }
   .np-dateline { flex-direction: column; gap: 2px; align-items: center; }
 }
 
