@@ -6,12 +6,15 @@ import logoSprouts from "./assets/logo-2.png"
 import logoDelta from "./assets/logo-3.png"
 import ContactForm from "./components/ContactForm"
 import OfficersPage from "./components/OfficersPage"
+import InitiativesPage from "./components/InitiativesPage"
+import { UPCOMING, ALL_EVENTS } from "./data/events"
+import type { TopicSlug } from "./data/topics"
 import { useReveal } from "./hooks/useReveal"
 import logoVerizon from "./assets/logo-verizon.svg"
 import logoGoldman from "./assets/logo-goldmansachs.svg"
 import logoBofA from "./assets/logo-bankofamerica.svg"
 
-type Page = "home" | "officers" | "events" | "contact"
+type Page = "home" | "officers" | "events" | "contact" | "initiatives"
 type Theme = "dark" | "light"
 
 /* ─────────────────────────────────────────────────────────
@@ -178,11 +181,15 @@ function useImmersion(page: Page) {
 
 interface VizNode {
   label: string
-  cx: number
-  cy: number
+  topic?: TopicSlug
   r: number
   isCenter?: boolean
   phase: number
+  /* Normalised positions for the two layouts: `wide` frames the hero copy
+     from both sides on desktop; `tall` is a hexagon for the stacked
+     graph under the copy on phones and tablets. */
+  wide: [number, number]
+  tall: [number, number]
 }
 
 interface VizEdge {
@@ -193,109 +200,94 @@ interface VizEdge {
 }
 
 const VIZ_NODES: VizNode[] = [
-  { label: "AIS UTD", cx: 0.5, cy: 0.5, r: 22, isCenter: true, phase: 0 },
-  { label: "Technology", cx: 0.74, cy: 0.21, r: 15, phase: 0.9 },
-  { label: "Business", cx: 0.86, cy: 0.5, r: 13, phase: 1.8 },
-  { label: "Data", cx: 0.74, cy: 0.79, r: 14, phase: 2.7 },
-  { label: "Networking", cx: 0.5, cy: 0.88, r: 12, phase: 3.6 },
-  { label: "Career", cx: 0.26, cy: 0.79, r: 13, phase: 4.5 },
-  { label: "Community", cx: 0.14, cy: 0.5, r: 14, phase: 5.4 },
-  { label: "Workshops", cx: 0.26, cy: 0.21, r: 12, phase: 6.3 },
-  { label: "Analytics", cx: 0.5, cy: 0.13, r: 13, phase: 7.2 },
+  { label: "AIS UTD", r: 24, isCenter: true, phase: 0, wide: [0.5, 0.5], tall: [0.5, 0.47] },
+  { label: "Technology", topic: "technology", r: 17, phase: 0.9, wide: [0.88, 0.26], tall: [0.5, 0.12] },
+  { label: "Data", topic: "data", r: 17, phase: 1.8, wide: [0.9, 0.52], tall: [0.84, 0.3] },
+  { label: "Business", topic: "business", r: 17, phase: 2.7, wide: [0.87, 0.78], tall: [0.84, 0.64] },
+  { label: "Career", topic: "career", r: 17, phase: 3.6, wide: [0.13, 0.78], tall: [0.5, 0.82] },
+  { label: "Community", topic: "community", r: 17, phase: 4.5, wide: [0.1, 0.52], tall: [0.16, 0.64] },
+  { label: "Workshops", topic: "workshops", r: 17, phase: 5.4, wide: [0.12, 0.26], tall: [0.16, 0.3] },
 ]
 
+// Spokes from the hub, then the ring joining neighbours
 const VIZ_EDGES: VizEdge[] = [
-  { from: 0, to: 1, signal: 0.0, speed: 0.003 },
-  { from: 0, to: 2, signal: 0.2, speed: 0.0025 },
-  { from: 0, to: 3, signal: 0.45, speed: 0.0028 },
-  { from: 0, to: 4, signal: 0.6, speed: 0.0022 },
-  { from: 0, to: 5, signal: 0.8, speed: 0.003 },
-  { from: 0, to: 6, signal: 0.15, speed: 0.0027 },
-  { from: 0, to: 7, signal: 0.35, speed: 0.0024 },
-  { from: 0, to: 8, signal: 0.7, speed: 0.0026 },
-  { from: 1, to: 8, signal: 0.5, speed: 0.0018 },
-  { from: 1, to: 2, signal: 0.3, speed: 0.0016 },
-  { from: 2, to: 3, signal: 0.8, speed: 0.0018 },
-  { from: 3, to: 4, signal: 0.2, speed: 0.0017 },
-  { from: 5, to: 6, signal: 0.4, speed: 0.0019 },
-  { from: 6, to: 7, signal: 0.6, speed: 0.0018 },
+  ...[1, 2, 3, 4, 5, 6].map((to, k) => ({ from: 0, to, signal: (k * 0.17) % 1, speed: 0.0024 + (k % 3) * 0.0003 })),
+  ...[1, 2, 3, 4, 5, 6].map((from, k) => ({ from, to: (from % 6) + 1, signal: (0.5 + k * 0.13) % 1, speed: 0.0017 })),
 ]
 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 
+/* Nodes (glow and label included) keep this far clear of the signal rail
+   in the left gutter; the right side mirrors it so the layout stays even */
+const RAIL_CLEAR = 70
+const railPad = (boxLeft: number) => {
+  const rail = document.querySelector<HTMLElement>(".signal-rail")
+  if (!rail || !rail.offsetWidth) return 0
+  return Math.max(0, rail.getBoundingClientRect().right - boxLeft + RAIL_CLEAR)
+}
+const clampX = (x: number, W: number, pad: number) => (pad > 0 ? Math.min(W - pad, Math.max(pad, x)) : x)
+
+/* Canvas narrower than this uses the stacked hexagon layout */
+const isTall = (W: number) => W < 720
+const nodeXY = (n: VizNode, W: number, H: number, k: number) => {
+  const [cx, cy] = isTall(W) ? n.tall : n.wide
+  return { x: (0.5 + (cx - 0.5) * k) * W, y: (0.5 + (cy - 0.5) * k) * H }
+}
+
 /* Hero → stats handoff. Four graph nodes peel off as you scroll and fly to
    the four stat cells (Community→Members, Workshops→Events, Business→Partner
-   companies, Networking→Participants). The overlay writes per-node progress
+   companies, Career→Participants). The overlay writes per-node progress
    here; the hero canvas reads it to dim the nodes that have left. */
-const HANDOFF_NODES = [6, 7, 2, 4]
+const HANDOFF_NODES = (["community", "workshops", "business", "career"] as TopicSlug[]).map((t) =>
+  VIZ_NODES.findIndex((n) => n.topic === t),
+)
 const STAT_OF_NODE: Record<number, number> = Object.fromEntries(HANDOFF_NODES.map((n, k) => [n, k]))
 const handoff = { p: [0, 0, 0, 0], active: false }
 const HERO_CONTRACT = 0.38
 const collapseAt = () => clamp01(window.scrollY / (window.innerHeight * 0.9))
 
-/* Timings (ms) for the assemble-on-load sequence */
+/* Timings (ms) for the assemble-on-load sequence and the open burst */
 const INTRO_DELAY = 450
 const NODE_STAGGER = 120
 const NODE_DURATION = 650
+const OPEN_DELAY = 420
 
-function HeroVizCanvas({ theme }: { theme: Theme }) {
+function HeroVizCanvas({ theme, onOpen }: { theme: Theme; onOpen: (topic: TopicSlug) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const edgesRef = useRef(VIZ_EDGES.map((e) => ({ ...e })))
-  // Smoothed 0..1 hover amount per node, so proximity eases instead of snapping
+  // Smoothed 0..1 interaction amount per node, so states ease instead of snapping
   const hoverRef = useRef(VIZ_NODES.map(() => 0))
-  // Taps/clicks send a ripple out from the point of contact
+  // Node under the pointer or keyboard focus (-1 when none)
+  const activeRef = useRef(-1)
+  // A node that was just opened: it bursts before the page changes
+  const burstRef = useRef<{ i: number; t: number } | null>(null)
+  // Taps on empty canvas send a ripple out from the point of contact
   const pulsesRef = useRef<{ x: number; y: number; t: number }[]>([])
+  // One real button per topic node, moved onto the node every frame
+  const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   // Survives theme switches so the intro never replays
   const startRef = useRef<number | null>(null)
+  const onOpenRef = useRef(onOpen)
+  onOpenRef.current = onOpen
 
   const isDark = theme === "dark"
+  // rgb triplets: text ink, accent, and the paper the nodes sit on
+  const ink = isDark ? "242,236,223" : "19,35,58"
+  const accent = isDark ? "248,174,53" : "201,125,0"
+  const paper = isDark ? "14,26,44" : "251,248,240"
+  const edgeA = isDark ? 0.13 : 0.16
+  const rgba = (c: string, a: number) => `rgba(${c},${Math.max(0, Math.min(1, a)).toFixed(3)})`
 
-  // Color palette per theme
-  const C = isDark
-    ? {
-        edge: "rgba(196,184,160,0.16)",
-        nodeFill: (near: boolean) =>
-          near ? "rgba(248,174,53,0.10)" : "rgba(25,36,54,0.35)",
-        nodeStroke: (near: boolean) =>
-          near ? "rgba(248,174,53,0.5)" : "rgba(196,184,160,0.28)",
-        dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(248,174,53,0.88)" : "rgba(196,184,160,0.6)",
-        label: (center: boolean, near: boolean) =>
-          center
-            ? "rgba(248,174,53,0.95)"
-            : near
-              ? "rgba(248,174,53,0.85)"
-              : "rgba(210,200,180,0.78)",
-        ringOuter: (a: number) => `rgba(248,174,53,${a})`,
-        ringInner: "rgba(248,174,53,0.2)",
-        signalGlow0: "rgba(248,174,53,0.24)",
-        signalDot: "rgba(248,174,53,0.9)",
-        centerFill: "rgba(248,174,53,0.12)",
-        centerStroke: "rgba(248,174,53,0.68)",
-      }
-    : {
-        edge: "rgba(30,50,85,0.2)",
-        nodeFill: (near: boolean) =>
-          near ? "rgba(201,125,0,0.10)" : "rgba(253,252,248,0.55)",
-        nodeStroke: (near: boolean) =>
-          near ? "rgba(201,125,0,0.5)" : "rgba(30,50,85,0.32)",
-        dot: (center: boolean, near: boolean) =>
-          center || near ? "rgba(201,125,0,0.9)" : "rgba(30,50,85,0.55)",
-        label: (center: boolean, near: boolean) =>
-          center
-            ? "rgba(146,87,0,1)"
-            : near
-              ? "rgba(146,87,0,0.9)"
-              : "rgba(19,35,58,0.8)",
-        ringOuter: (a: number) => `rgba(201,125,0,${a})`,
-        ringInner: "rgba(201,125,0,0.18)",
-        signalGlow0: "rgba(201,125,0,0.22)",
-        signalDot: "rgba(201,125,0,0.85)",
-        centerFill: "rgba(201,125,0,0.10)",
-        centerStroke: "rgba(201,125,0,0.65)",
-      }
+  const open = (i: number) => {
+    const topic = VIZ_NODES[i].topic
+    if (!topic) return
+    activeRef.current = i
+    burstRef.current = { i, t: performance.now() }
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    window.setTimeout(() => onOpenRef.current(topic), reduced ? 0 : OPEN_DELAY)
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -331,98 +323,116 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
       last = ts
       const frame = dt / 16.7
       const elapsed = ts - startRef.current
+      const now = performance.now()
 
       ctx.clearRect(0, 0, W, H)
       const t = ts * 0.001
+      const tall = isTall(W)
       // Pointer is stored in viewport space so hover stays correct while the page scrolls
       const box = canvas.getBoundingClientRect()
       const mx = mouseRef.current.x - box.left
       const my = mouseRef.current.y - box.top
       const edges = edgesRef.current
       const hover = hoverRef.current
+      const active = activeRef.current
 
       // Per-node intro progress: the graph grows outward from the centre
       const prog = VIZ_NODES.map((_, i) =>
         reduced ? 1 : easeOut(clamp01((elapsed - INTRO_DELAY - i * NODE_STAGGER) / NODE_DURATION)),
       )
 
-      // Scrolling out of the hero pulls the graph in toward its centre
-      const col = reduced ? 0 : collapseAt()
+      // Scrolling out of the hero pulls the wide graph in toward its centre.
+      // The stacked graph sits below the fold, so it holds its shape.
+      const col = reduced || tall ? 0 : collapseAt()
       const k = 1 - HERO_CONTRACT * col
-      const pos = VIZ_NODES.map((n) => ({
-        x: (0.5 + (n.cx - 0.5) * k) * W + (reduced ? 0 : Math.sin(t * 0.28 + n.phase) * 8),
-        y: (0.5 + (n.cy - 0.5) * k) * H + (reduced ? 0 : Math.cos(t * 0.22 + n.phase * 1.2) * 7),
-      }))
       const fade = 1 - 0.5 * col
 
-      VIZ_NODES.forEach((_, i) => {
-        const near = Math.hypot(mx - pos[i].x, my - pos[i].y) < 90 ? 1 : 0
-        hover[i] += (near - hover[i]) * Math.min(1, 0.18 * frame)
+      const pos = VIZ_NODES.map((n) => {
+        const p = nodeXY(n, W, H, k)
+        return {
+          x: p.x + (reduced ? 0 : Math.sin(t * 0.28 + n.phase) * 5),
+          y: p.y + (reduced ? 0 : Math.cos(t * 0.22 + n.phase * 1.2) * 4),
+        }
       })
 
-      // Ripples: kick nodes the wavefront passes, draw the expanding ring
-      const now = performance.now()
+      VIZ_NODES.forEach((n, i) => {
+        if (n.isCenter) return
+        const near = Math.hypot(mx - pos[i].x, my - pos[i].y)
+        const target = i === active ? 1 : near < 120 ? 0.3 : 0
+        hover[i] = reduced ? target : hover[i] + (target - hover[i]) * Math.min(1, 0.16 * frame)
+        // The active node leans toward the pointer
+        if (i === active && near < 160) {
+          pos[i].x += Math.max(-8, Math.min(8, (mx - pos[i].x) * 0.08)) * hover[i]
+          pos[i].y += Math.max(-8, Math.min(8, (my - pos[i].y) * 0.08)) * hover[i]
+        }
+      })
+
+      // Never let a node reach the signal rail
+      const pad = railPad(box.left)
+      pos.forEach((p) => { p.x = clampX(p.x, W, pad) })
+
+      // Ripples from taps on empty canvas
       pulsesRef.current = pulsesRef.current.filter((p) => now - p.t < 1000)
       for (const p of pulsesRef.current) {
         const age = now - p.t
-        const radius = 6 + age * 0.16
-        VIZ_NODES.forEach((_, i) => {
-          if (Math.abs(Math.hypot(pos[i].x - p.x, pos[i].y - p.y) - radius) < 14) hover[i] = 1
-        })
         ctx.beginPath()
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-        ctx.strokeStyle = C.signalDot
-        ctx.globalAlpha = 0.55 * (1 - age / 1000)
+        ctx.arc(p.x, p.y, 6 + age * 0.16, 0, Math.PI * 2)
+        ctx.strokeStyle = rgba(accent, 0.55 * (1 - age / 1000))
         ctx.lineWidth = 1.5
         ctx.stroke()
-        ctx.globalAlpha = 1
       }
 
-      // Outer glow ring
+      // Hub rings
       const cr = pos[0]
-      const ringAlpha = (0.07 + Math.sin(t * 1.6) * 0.03) * prog[0]
-      const ringR = VIZ_NODES[0].r + 14 + Math.sin(t * 1.6) * 4
+      const hubR = VIZ_NODES[0].r
       ctx.beginPath()
-      ctx.arc(cr.x, cr.y, ringR, 0, Math.PI * 2)
-      ctx.strokeStyle = C.ringOuter(ringAlpha)
+      ctx.arc(cr.x, cr.y, hubR + 14 + Math.sin(t * 1.6) * 4, 0, Math.PI * 2)
+      ctx.strokeStyle = rgba(accent, (0.08 + Math.sin(t * 1.6) * 0.03) * prog[0])
       ctx.lineWidth = 1.5
       ctx.stroke()
-      ctx.beginPath()
-      ctx.arc(cr.x, cr.y, VIZ_NODES[0].r + 9, 0, Math.PI * 2)
-      ctx.strokeStyle = C.ringInner
-      ctx.globalAlpha = prog[0]
-      ctx.lineWidth = 1
-      ctx.stroke()
-      ctx.globalAlpha = 1
 
-      // Edges: draw out from the earlier node once both ends exist
+      // Edges: grow out once both ends exist; light up around the active node
       for (const e of edges) {
         const grown = Math.min(prog[e.from], prog[e.to])
         if (grown <= 0) continue
         const p1 = pos[e.from], p2 = pos[e.to]
-        const gone = Math.max(STAT_OF_NODE[e.from] === undefined ? 0 : handoff.p[STAT_OF_NODE[e.from]], STAT_OF_NODE[e.to] === undefined ? 0 : handoff.p[STAT_OF_NODE[e.to]])
+        const goneOf = (i: number) => (STAT_OF_NODE[i] === undefined ? 0 : handoff.p[STAT_OF_NODE[i]])
+        const gone = Math.max(goneOf(e.from), goneOf(e.to))
+        const lit = Math.max(hover[e.from] > 0.5 ? hover[e.from] : 0, hover[e.to] > 0.5 ? hover[e.to] : 0)
+        const ex = p1.x + (p2.x - p1.x) * grown
+        const ey = p1.y + (p2.y - p1.y) * grown
         ctx.globalAlpha = fade * (1 - 0.85 * gone)
         ctx.beginPath()
         ctx.moveTo(p1.x, p1.y)
-        ctx.lineTo(p1.x + (p2.x - p1.x) * grown, p1.y + (p2.y - p1.y) * grown)
-        ctx.strokeStyle = C.edge
-        ctx.lineWidth = 0.9
+        ctx.lineTo(ex, ey)
+        ctx.strokeStyle = rgba(ink, edgeA)
+        ctx.lineWidth = 1
         ctx.stroke()
+        if (lit > 0) {
+          ctx.beginPath()
+          ctx.moveTo(p1.x, p1.y)
+          ctx.lineTo(ex, ey)
+          ctx.strokeStyle = rgba(accent, 0.6 * lit)
+          ctx.lineWidth = 1.3
+          ctx.stroke()
+        }
 
         if (!reduced && grown >= 1) {
-          e.signal = (e.signal + e.speed * frame) % 1
+          // The spoke to the active node carries a quick, bright pulse
+          const hot = e.from === 0 && lit > 0.5
+          e.signal = (e.signal + e.speed * frame * (hot ? 5 : 1)) % 1
           const sx = p1.x + (p2.x - p1.x) * e.signal
           const sy = p1.y + (p2.y - p1.y) * e.signal
-          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 9)
-          g.addColorStop(0, C.signalGlow0)
-          g.addColorStop(1, "transparent")
+          const gr = ctx.createRadialGradient(sx, sy, 0, sx, sy, hot ? 12 : 9)
+          gr.addColorStop(0, rgba(accent, hot ? 0.45 : 0.24))
+          gr.addColorStop(1, rgba(accent, 0))
           ctx.beginPath()
-          ctx.arc(sx, sy, 9, 0, Math.PI * 2)
-          ctx.fillStyle = g
+          ctx.arc(sx, sy, hot ? 12 : 9, 0, Math.PI * 2)
+          ctx.fillStyle = gr
           ctx.fill()
           ctx.beginPath()
-          ctx.arc(sx, sy, 2.2, 0, Math.PI * 2)
-          ctx.fillStyle = C.signalDot
+          ctx.arc(sx, sy, hot ? 2.8 : 2.2, 0, Math.PI * 2)
+          ctx.fillStyle = rgba(accent, 0.9)
           ctx.fill()
         }
         ctx.globalAlpha = 1
@@ -432,33 +442,132 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
       VIZ_NODES.forEach((n, i) => {
         const gone = STAT_OF_NODE[i] === undefined ? 0 : handoff.p[STAT_OF_NODE[i]]
         const p = prog[i] * fade * (1 - 0.9 * gone)
+        const btn = btnRefs.current[i]
+        if (btn) {
+          btn.style.transform = `translate(${pos[i].x - 60}px, ${pos[i].y - 40}px)`
+          btn.style.visibility = p > 0.5 ? "visible" : "hidden"
+        }
         if (p <= 0) return
         const { x, y } = pos[i]
-        const h = hover[i]
-        const near = h > 0.5
-        const r = n.r * (0.4 + 0.6 * prog[i]) * (1 + h * 0.18)
-
         ctx.globalAlpha = p
+
+        if (n.isCenter) {
+          const r = n.r * (0.4 + 0.6 * prog[i])
+          ctx.beginPath()
+          ctx.arc(x, y, r, 0, Math.PI * 2)
+          ctx.fillStyle = rgba(paper, 0.9)
+          ctx.fill()
+          ctx.fillStyle = rgba(accent, 0.12)
+          ctx.fill()
+          ctx.strokeStyle = rgba(accent, 0.7)
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.arc(x, y, 4.5, 0, Math.PI * 2)
+          ctx.fillStyle = rgba(accent, 0.9)
+          ctx.fill()
+          ctx.font = "600 17px 'Cormorant Garamond', Georgia, serif"
+          ctx.textAlign = "center"
+          ctx.textBaseline = "top"
+          ctx.fillStyle = rgba(accent, 0.95)
+          ctx.fillText(n.label, x, y + r + 6)
+          ctx.globalAlpha = 1
+          return
+        }
+
+        const h = hover[i]
+        const breathe = reduced ? 0 : Math.sin(t * 1.4 + n.phase)
+        const r = n.r * (0.4 + 0.6 * prog[i]) * (1 + 0.22 * h)
+
+        // Soft glow: breathes at rest, swells when engaged
+        const glowR = r * 2.7
+        const gl = ctx.createRadialGradient(x, y, r * 0.6, x, y, glowR)
+        gl.addColorStop(0, rgba(accent, 0.14 + 0.04 * breathe + 0.22 * h))
+        gl.addColorStop(1, rgba(accent, 0))
+        ctx.beginPath()
+        ctx.arc(x, y, glowR, 0, Math.PI * 2)
+        ctx.fillStyle = gl
+        ctx.fill()
+
+        // Token: solid paper disc so the edges don't show through
         ctx.beginPath()
         ctx.arc(x, y, r, 0, Math.PI * 2)
-        ctx.fillStyle = n.isCenter ? C.centerFill : C.nodeFill(near)
+        ctx.fillStyle = rgba(paper, 0.94)
         ctx.fill()
-        ctx.strokeStyle = n.isCenter ? C.centerStroke : C.nodeStroke(near)
-        ctx.lineWidth = n.isCenter ? 1.5 : 1
+        if (h > 0) {
+          ctx.fillStyle = rgba(accent, 0.18 * h)
+          ctx.fill()
+        }
+        ctx.lineWidth = 1.5
+        ctx.strokeStyle = rgba(ink, 0.75 * (1 - h))
+        ctx.stroke()
+        if (h > 0) {
+          ctx.strokeStyle = rgba(accent, h)
+          ctx.stroke()
+        }
+
+        // Resting ring, breathing just outside the token
+        ctx.beginPath()
+        ctx.arc(x, y, r + 5 + breathe * 1.5, 0, Math.PI * 2)
+        ctx.strokeStyle = rgba(ink, 0.2 * (1 - h))
+        ctx.lineWidth = 1
         ctx.stroke()
 
+        // Engaged: a gold ring draws itself around the node...
+        if (h > 0.01) {
+          ctx.beginPath()
+          ctx.arc(x, y, r + 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * easeOut(h))
+          ctx.strokeStyle = rgba(accent, 0.95)
+          ctx.lineWidth = 1.6
+          ctx.stroke()
+        }
+        // ...and two satellites orbit on it
+        if (h > 0.05 && !reduced) {
+          for (let sI = 0; sI < 2; sI++) {
+            const ang = t * 2.2 + n.phase + sI * Math.PI
+            ctx.beginPath()
+            ctx.arc(x + Math.cos(ang) * (r + 9), y + Math.sin(ang) * (r + 9), 2.6, 0, Math.PI * 2)
+            ctx.fillStyle = rgba(accent, h)
+            ctx.fill()
+          }
+        }
+
+        // Core
         ctx.beginPath()
-        ctx.arc(x, y, n.isCenter ? 4.5 : 2.8, 0, Math.PI * 2)
-        ctx.fillStyle = C.dot(!!n.isCenter, near)
+        ctx.arc(x, y, 3.6 + 1.6 * h, 0, Math.PI * 2)
+        ctx.fillStyle = h > 0.5 ? rgba(accent, 1) : rgba(ink, 0.9)
         ctx.fill()
 
-        ctx.font = n.isCenter
-          ? "600 16px 'Cormorant Garamond', Georgia, serif"
-          : "italic 500 15px 'Cormorant Garamond', Georgia, serif"
+        // Opened: a double ring bursts outward before the page changes
+        const burst = burstRef.current
+        if (burst && burst.i === i) {
+          const age = now - burst.t
+          if (age < 700) {
+            for (const [speed, w] of [[0.14, 1.8], [0.08, 1.2]] as const) {
+              ctx.beginPath()
+              ctx.arc(x, y, r + age * speed, 0, Math.PI * 2)
+              ctx.strokeStyle = rgba(accent, 0.9 * (1 - age / 700))
+              ctx.lineWidth = w
+              ctx.stroke()
+            }
+          }
+        }
+
+        // Label, with an arrow sliding in when engaged
+        ctx.font = `italic 500 ${tall ? 17 : 20}px 'Cormorant Garamond', Georgia, serif`
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
-        ctx.fillStyle = C.label(!!n.isCenter, near)
-        ctx.fillText(n.label, x, y + r + 5)
+        const ly = y + r + 10
+        ctx.fillStyle = rgba(ink, 0.95 * (1 - h))
+        ctx.fillText(n.label, x, ly)
+        if (h > 0) {
+          ctx.fillStyle = rgba(accent, h)
+          ctx.fillText(n.label, x, ly)
+          const w = ctx.measureText(n.label).width
+          ctx.font = "500 13px 'General Sans', system-ui, sans-serif"
+          ctx.textAlign = "left"
+          ctx.fillText("→", x + w / 2 + 4 + 6 * h, ly + (tall ? 2 : 3))
+        }
         ctx.globalAlpha = 1
       })
     }
@@ -474,7 +583,7 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
       cancelAnimationFrame(raf)
     }
 
-    // Only animate while on screen (also skips the hidden mobile canvas)
+    // Only animate while on screen
     const io = new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop()))
     io.observe(canvas)
 
@@ -483,48 +592,50 @@ function HeroVizCanvas({ theme }: { theme: Theme }) {
     }
     window.addEventListener("mousemove", onMove, { passive: true })
 
-    // Touch and click: ripple on press; a finger dragging across lights nodes.
-    let releaseTimer = 0
+    // Taps on empty canvas: a ripple from the point of contact
     const onDown = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect()
       pulsesRef.current.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() })
-      if (e.pointerType !== "mouse") {
-        clearTimeout(releaseTimer)
-        mouseRef.current = { x: e.clientX, y: e.clientY }
-      }
-    }
-    const onTouchMove = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") return
-      mouseRef.current = { x: e.clientX, y: e.clientY }
-    }
-    const onRelease = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") return
-      releaseTimer = window.setTimeout(() => { mouseRef.current = { x: -9999, y: -9999 } }, 650)
     }
     canvas.addEventListener("pointerdown", onDown)
-    canvas.addEventListener("pointermove", onTouchMove)
-    canvas.addEventListener("pointerup", onRelease)
-    canvas.addEventListener("pointercancel", onRelease)
     return () => {
       stop()
       io.disconnect()
       ro.disconnect()
-      clearTimeout(releaseTimer)
       window.removeEventListener("mousemove", onMove)
       canvas.removeEventListener("pointerdown", onDown)
-      canvas.removeEventListener("pointermove", onTouchMove)
-      canvas.removeEventListener("pointerup", onRelease)
-      canvas.removeEventListener("pointercancel", onRelease)
     }
   // Re-run when theme changes so canvas redraws with new colors
   }, [theme]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const leave = (i: number) => () => { if (activeRef.current === i) activeRef.current = -1 }
+
   return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      style={{ width: "100%", height: "100%", display: "block" }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        style={{ width: "100%", height: "100%", display: "block" }}
+      />
+      {/* Real buttons over the drawn nodes: pointer, touch, and keyboard all
+          work, and screen readers get a named link to each topic */}
+      {VIZ_NODES.map((n, i) =>
+        n.topic ? (
+          <button
+            key={n.topic}
+            ref={(el) => { btnRefs.current[i] = el }}
+            type="button"
+            className="viz-node-btn"
+            aria-label={`${n.label}: how AIS UTD approaches ${n.label.toLowerCase()}`}
+            onPointerEnter={() => { activeRef.current = i }}
+            onPointerLeave={leave(i)}
+            onFocus={() => { activeRef.current = i }}
+            onBlur={leave(i)}
+            onClick={() => open(i)}
+          />
+        ) : null,
+      )}
+    </>
   )
 }
 
@@ -582,6 +693,7 @@ const SOCIALS = [
 
 const NAV_LINKS: { label: string; page: Page }[] = [
   { label: "Home", page: "home" },
+  { label: "Focus", page: "initiatives" },
   { label: "Events", page: "events" },
   { label: "Officers", page: "officers" },
   { label: "Contact", page: "contact" },
@@ -616,11 +728,13 @@ function Nav({
   setPage,
   theme,
   setTheme,
+  onGetInvolved,
 }: {
   page: Page
   setPage: (p: Page) => void
   theme: Theme
   setTheme: (t: Theme) => void
+  onGetInvolved: () => void
 }) {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
@@ -755,12 +869,12 @@ function Nav({
               {isDark ? <SunIcon /> : <MoonIcon />}
             </button>
 
-            <a href="mailto:utdallasais@gmail.com" className="join-btn nav-cta hidden sm:inline-flex">
+            <button type="button" onClick={onGetInvolved} className="join-btn nav-cta hidden sm:inline-flex">
               Get Involved
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            </a>
+            </button>
 
             {/* Hamburger — mobile only */}
             <button
@@ -847,13 +961,14 @@ function Nav({
               {l.label}
             </button>
           ))}
-          <a
-            href="mailto:utdallasais@gmail.com"
+          <button
+            type="button"
+            onClick={() => { onGetInvolved(); closeMenu() }}
             className="join-btn"
             style={{ marginTop: 36, animation: "fadeUp 0.38s cubic-bezier(0.16,1,0.3,1) 280ms both" }}
           >
             Get Involved
-          </a>
+          </button>
           <div className="mobile-menu-foot">
             <div className="mobile-menu-socials">
               {SOCIALS.map((s) => <SocialBtn key={s.label} {...s} />)}
@@ -878,7 +993,7 @@ function SocialBtn({ label, href, icon }: { label: string; href: string; icon: R
   )
 }
 
-function Footer({ setPage }: { setPage: (p: Page) => void }) {
+function Footer({ setPage, onGetInvolved }: { setPage: (p: Page) => void; onGetInvolved: () => void }) {
   return (
     <footer style={{ background: "var(--bg-footer)", borderTop: "1px solid var(--border-subtle)", transition: "background-color 0.28s ease, border-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 32px" }}>
@@ -928,7 +1043,7 @@ function Footer({ setPage }: { setPage: (p: Page) => void }) {
           <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
             © 2026 Association for Information Systems UTD. All rights reserved.
           </span>
-          <a href="mailto:utdallasais@gmail.com" className="join-btn">Get Involved</a>
+          <button type="button" onClick={onGetInvolved} className="join-btn">Get Involved</button>
         </div>
       </div>
     </footer>
@@ -1031,15 +1146,15 @@ function BentoStat({ target, suffix = "", label }: { target: number; suffix?: st
    SECTION 1 — Hero
 ───────────────────────────────────────────────────────── */
 
-function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme }) {
+function HeroSection({ setPage, theme, onGetInvolved }: { setPage: (p: Page, anchor?: string) => void; theme: Theme; onGetInvolved: () => void }) {
   return (
     <section className="hero-section fx-spot fx-spot-lg" style={{ position: "relative", overflow: "hidden" }}>
       <div aria-hidden className="hero-sweep" />
 
       <div className="hero-viz-wrap" data-parallax="-0.2" data-mouse aria-hidden>
-        <HeroVizCanvas theme={theme} />
+        <HeroVizCanvas theme={theme} onOpen={(topic) => setPage("initiatives", `topic-${topic}`)} />
       </div>
-      <div aria-hidden style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, zIndex: 1, background: "linear-gradient(to top, var(--bg-primary), transparent)", pointerEvents: "none" }} />
+      <div aria-hidden className="hero-fade" style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 200, zIndex: 0, background: "linear-gradient(to top, var(--bg-primary), transparent)", pointerEvents: "none" }} />
 
       <div className="hero-layout">
         <div className="hero-content" data-parallax="-0.08">
@@ -1057,9 +1172,9 @@ function HeroSection({ setPage, theme }: { setPage: (p: Page) => void; theme: Th
           </p>
 
           <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "800ms" }}>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
+            <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>
               Get Involved
-            </a>
+            </button>
             <button onClick={() => setPage("events")} className="ghost-btn" data-magnetic>
               Explore Events
             </button>
@@ -1223,11 +1338,6 @@ function WhatWeDoSection() {
    SECTION 4 — Upcoming Events
 ───────────────────────────────────────────────────────── */
 
-const UPCOMING = [
-  { name: "Poker Night", date: "Date TBA", type: "Social", desc: "Details coming soon.", partner: null, photo: "1704121421071-72b8509da9a8" },
-  { name: "SQL & Python Workshop", date: "Sep 27, 2026", type: "Workshop", desc: "Hands-on session covering data querying and scripting fundamentals.", partner: null, photo: "1516321318423-f06f85e504b3" },
-  { name: "Networking Night", date: "Oct 5, 2026", type: "Networking", desc: "Connect with consulting and tech recruiters over a structured mixer.", partner: "Deloitte", photo: "1515187029135-18ee286d815b" },
-]
 
 /* "Sep 20, 2026" -> { month: "Sep", day: "20" }; anything else (e.g.
    "Date TBA") comes back as a label with no day */
@@ -1307,7 +1417,7 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
    SECTION 5 — Why Join AIS?
 ───────────────────────────────────────────────────────── */
 
-function WhyJoinSection() {
+function WhyJoinSection({ onGetInvolved }: { onGetInvolved: () => void }) {
   const headRef = useReveal()
   const bentoRef = useReveal()
   return (
@@ -1341,10 +1451,10 @@ function WhyJoinSection() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
               No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
+            <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>
               Join today
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -1356,7 +1466,7 @@ function WhyJoinSection() {
    SECTION 6 — Get Involved CTA
 ───────────────────────────────────────────────────────── */
 
-function GetInvolvedSection() {
+function GetInvolvedSection({ onGetInvolved }: { onGetInvolved: () => void }) {
   const ref = useReveal()
   return (
     <section className="glow-cta-section" data-rail>
@@ -1370,10 +1480,10 @@ function GetInvolvedSection() {
           Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
         </p>
         <div style={{ display: "flex", gap: 40, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
-          <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic>
+          <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>
             Join AIS UTD
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </a>
+          </button>
           <a href="mailto:utdallasais@gmail.com" className="quiet-link quiet-link--strong" style={{ fontSize: 15 }}>
             ais@utdallas.edu
           </a>
@@ -1431,8 +1541,13 @@ function StatHandoff() {
       handoff.active = true
 
       const vr = viz.getBoundingClientRect()
-      const end = Math.max(1, grid.getBoundingClientRect().top + window.scrollY - vh * 0.78)
-      const u = clamp01(window.scrollY / end)
+      // Wide: the graph is the hero backdrop, so the handoff runs from the
+      // top of the page. Stacked: the graph sits below the fold, so it
+      // waits until you've scrolled past it — otherwise its nodes would
+      // already be gone by the time you reach them.
+      const start = isTall(vr.width) ? Math.max(0, vr.top + window.scrollY + vr.height * 0.5 - vh * 0.35) : 0
+      const end = Math.max(start + 300, grid.getBoundingClientRect().top + window.scrollY - vh * 0.78)
+      const u = clamp01((window.scrollY - start) / (end - start))
       const contract = 1 - HERO_CONTRACT * collapseAt()
       const rgb = getComputedStyle(document.documentElement).getPropertyValue("--accent-rgb").trim() || "248, 174, 53"
 
@@ -1446,9 +1561,9 @@ function StatHandoff() {
         }
         if (uk <= 0 || uk >= 1) return
 
-        const n = VIZ_NODES[nodeIdx]
-        const sx = vr.left + (0.5 + (n.cx - 0.5) * contract) * vr.width
-        const sy = vr.top + (0.5 + (n.cy - 0.5) * contract) * vr.height
+        const src = nodeXY(VIZ_NODES[nodeIdx], vr.width, vr.height, isTall(vr.width) ? 1 : contract)
+        const sx = vr.left + clampX(src.x, vr.width, railPad(vr.left))
+        const sy = vr.top + src.y
         const cr = cells[k].getBoundingClientRect()
         const tx = cr.left + cr.width / 2
         const ty = cr.top + cr.height / 2
@@ -1620,18 +1735,18 @@ function SignalRail() {
   )
 }
 
-function HomePage({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme }) {
+function HomePage({ setPage, theme, onGetInvolved }: { setPage: (p: Page, anchor?: string) => void; theme: Theme; onGetInvolved: () => void }) {
   return (
     <main style={{ position: "relative" }}>
       <SignalRail />
       <StatHandoff />
-      <HeroSection setPage={setPage} theme={theme} />
+      <HeroSection setPage={setPage} theme={theme} onGetInvolved={onGetInvolved} />
       <CompaniesSection />
       <StatsSection />
       <WhatWeDoSection />
       <EventsPreviewSection setPage={setPage} />
-      <WhyJoinSection />
-      <GetInvolvedSection />
+      <WhyJoinSection onGetInvolved={onGetInvolved} />
+      <GetInvolvedSection onGetInvolved={onGetInvolved} />
     </main>
   )
 }
@@ -1640,28 +1755,6 @@ function HomePage({ setPage, theme }: { setPage: (p: Page) => void; theme: Theme
    Events Page
 ───────────────────────────────────────────────────────── */
 
-const ALL_EVENTS = [
-  { name: "Resume Workshop", partner: "Capital One", date: "October 2025", photo: "1556761175-b413da4baf72" },
-  { name: "AI in Finance Tech Talk", partner: "Goldman Sachs", date: "September 2025", photo: "1504384308090-c894fdcc538d" },
-  { name: "Case Competition Finals", partner: null, date: "March 2025", photo: "1522202176988-66273c2fd55f" },
-  { name: "Consulting Networking Night", partner: "Deloitte", date: "February 2025", photo: "1515187029135-18ee286d815b" },
-  { name: "Hackathon: Build for Business", partner: null, date: "April 2025", photo: "1550751827-4bd374c3f58b" },
-  { name: "Spring Info Session", partner: null, date: "January 2025", photo: "1531058020387-3be344556be6" },
-  { name: "Excel Bootcamp", partner: "EY", date: "November 2024", photo: "1573496359142-b8d87734a5a2" },
-  { name: "Data Analytics Workshop", partner: "Accenture", date: "October 2024", photo: "1559136555-9303baea8ebd" },
-  { name: "Career Fair Prep Session", partner: "PwC", date: "September 2024", photo: "1542744173-8e7e53415bb0" },
-  { name: "Cloud Computing Deep Dive", partner: "AWS", date: "August 2024", photo: "1451187580459-43490279c0fa" },
-  { name: "Product Management 101", partner: "Google", date: "April 2024", photo: "1498050108023-c5249f4df085" },
-  { name: "Cybersecurity Panel", partner: "CrowdStrike", date: "March 2024", photo: "1614064641938-beddec4f87a2" },
-  { name: "Financial Modeling Workshop", partner: "JP Morgan", date: "February 2024", photo: "1611974789855-9c2a0a7236a3" },
-  { name: "Tech Industry Panel", partner: "Meta", date: "January 2024", photo: "1535378917042-10a22c95931a" },
-  { name: "Data Visualization Bootcamp", partner: "Tableau", date: "December 2023", photo: "1551288049-bebda4e38f71" },
-  { name: "Blockchain & Web3 Overview", partner: null, date: "November 2023", photo: "1639762681485-074b7f938ba0" },
-  { name: "Fall Kickoff Social", partner: null, date: "August 2023", photo: "1540575467100-59a4a8e8d2b6" },
-  { name: "SQL for Business Analysts", partner: "Microsoft", date: "October 2023", photo: "1516321318423-f06f85e504b3" },
-  { name: "UX Research Methods", partner: "IBM", date: "September 2023", photo: "1581291518633-83b4ebd1d83e" },
-  { name: "Agile Project Management", partner: "Salesforce", date: "July 2023", photo: "1507679799987-c73779587ccf" },
-]
 
 const PAGE_SIZE = 6
 
@@ -1783,7 +1876,7 @@ function ContactSocialBtn({ label, href, icon }: { label: string; href: string; 
   )
 }
 
-function ContactPage() {
+function ContactPage({ onGetInvolved }: { onGetInvolved: () => void }) {
   const ref = useReveal()
   return (
     <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
@@ -1819,10 +1912,10 @@ function ContactPage() {
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
               Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
             </p>
-            <a href="mailto:utdallasais@gmail.com" className="join-btn" data-magnetic style={{ marginBottom: 28 }}>
+            <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic style={{ marginBottom: 28 }}>
               Get Involved
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-            </a>
+            </button>
             <hr className="section-divider" style={{ margin: "28px 0" }} />
             <div style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6 }}>
               <strong style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: 13 }}>Meetings</strong><br />
@@ -1841,7 +1934,7 @@ function ContactPage() {
 
 /* Sticky "Get Involved" bar: appears once the hero is behind you and steps
    aside when the page's own CTA or the footer is on screen. */
-function MobileCta({ page }: { page: Page }) {
+function MobileCta({ page, onGetInvolved }: { page: Page; onGetInvolved: () => void }) {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -1869,15 +1962,16 @@ function MobileCta({ page }: { page: Page }) {
   }, [page])
 
   return (
-    <a
-      href="mailto:utdallasais@gmail.com"
+    <button
+      type="button"
+      onClick={onGetInvolved}
       className={`join-btn mobile-cta${show ? " show" : ""}`}
       tabIndex={show ? 0 : -1}
       aria-hidden={!show}
     >
       Get Involved
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-    </a>
+    </button>
   )
 }
 
@@ -1922,13 +2016,27 @@ export default function App() {
   useImmersion(page)
   useTouchFocus(page)
 
-  const navigate = (p: Page) => {
-    if (p === page) return
+  // Optional anchor: an element id on the destination page to land on
+  const navigate = (p: Page, anchor?: string) => {
+    const land = () => {
+      const el = anchor ? document.getElementById(anchor) : null
+      if (!el) return window.scrollTo({ top: 0, behavior: "instant" })
+      const offset = parseFloat(getComputedStyle(el).scrollMarginTop) || 0
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "instant" })
+      el.classList.remove("arrived")
+      void el.offsetWidth
+      el.classList.add("arrived")
+    }
+    if (p === page) {
+      if (anchor) land()
+      return
+    }
     setNextPage(p)
     setTimeout(() => {
       setPage(p)
       setNextPage(null)
-      window.scrollTo({ top: 0, behavior: "instant" })
+      // Wait a frame for the new page to render before measuring it
+      requestAnimationFrame(() => requestAnimationFrame(land))
     }, 350)
   }
 
@@ -1943,9 +2051,10 @@ export default function App() {
         {page === "events"   && <EventsPage />}
         {page === "officers" && <OfficersPage />}
         {page === "contact"  && <ContactPage onGetInvolved={openContactForm} />}
+        {page === "initiatives" && <InitiativesPage setPage={navigate} onGetInvolved={openContactForm} />}
       </div>
       <Footer setPage={navigate} onGetInvolved={openContactForm} />
-      <MobileCta page={page} />
+      <MobileCta page={page} onGetInvolved={openContactForm} />
       {contactFormOpen && <ContactForm onClose={closeContactForm} source={`website_${page}`} />}
     </div>
   )
