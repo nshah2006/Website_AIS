@@ -7,7 +7,9 @@ import logoDelta from "./assets/logo-3.png"
 import ContactForm from "./components/ContactForm"
 import OfficersPage from "./components/OfficersPage"
 import InitiativesPage from "./components/InitiativesPage"
-import { UPCOMING, ALL_EVENTS } from "./data/events"
+import EventsPage from "./components/EventsPage"
+import { Countdown, EventActions } from "./components/EventParts"
+import { splitEvents, parseEventDate } from "./lib/events"
 import type { TopicSlug } from "./data/topics"
 import { useReveal } from "./hooks/useReveal"
 import logoVerizon from "./assets/logo-verizon.svg"
@@ -643,10 +645,12 @@ function HeroVizCanvas({ theme, onOpen }: { theme: Theme; onOpen: (topic: TopicS
    Shared socials
 ───────────────────────────────────────────────────────── */
 
+export const MEMBER_FORM_URL = "https://forms.gle/ym4QyfQUrPJWvB3G8"
+
 const SOCIALS = [
   {
     label: "Instagram",
-    href: "#",
+    href: "https://www.instagram.com/utdallasais/",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="2" y="2" width="20" height="20" rx="5" />
@@ -656,17 +660,8 @@ const SOCIALS = [
     ),
   },
   {
-    label: "GroupMe",
-    href: "#",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-  },
-  {
     label: "Linktree",
-    href: "#",
+    href: "https://linktr.ee/ais_utdallas",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -676,7 +671,7 @@ const SOCIALS = [
   },
   {
     label: "LinkedIn",
-    href: "#",
+    href: "https://www.linkedin.com/in/utdallasais/",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
@@ -835,7 +830,7 @@ function Nav({
           <button
             className="nav-logo"
             onClick={() => setPage("home")}
-            aria-label="AIS UTD — go to home"
+            aria-label="AIS UTD, go to home"
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 12 }}
           >
             <img src={aisLogo} alt="AIS UTD" className="nav-logo-img" />
@@ -987,7 +982,7 @@ function Nav({
 
 function SocialBtn({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
   return (
-    <a href={href} aria-label={label} className="social-btn">
+    <a href={href} aria-label={label} className="social-btn" target="_blank" rel="noopener noreferrer">
       {icon}
     </a>
   )
@@ -1008,7 +1003,7 @@ function Footer({ setPage, onGetInvolved }: { setPage: (p: Page) => void; onGetI
               </div>
             </div>
             <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.65, margin: "0 0 20px" }}>
-              Association for Information Systems — connecting business, technology, and data. Open to all majors.
+              Association for Information Systems at UT Dallas. We connect business, technology, and data. Open to all majors.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {SOCIALS.map((s) => <SocialBtn key={s.label} {...s} />)}
@@ -1168,7 +1163,7 @@ function HeroSection({ setPage, theme, onGetInvolved }: { setPage: (p: Page, anc
           </h1>
 
           <p className="hero-sub anim-fade-up" style={{ animationDelay: "650ms" }}>
-            AIS UTD is a UT Dallas student organization connecting information systems, business, and data — building skills, creating industry connections, and growing community. Open to every major.
+            AIS UTD is a UT Dallas student organization for anyone interested in information systems, business, and data. Come learn new skills, meet people in industry, and find your community. Open to every major.
           </p>
 
           <div className="anim-fade-up hero-cta-row" style={{ animationDelay: "800ms" }}>
@@ -1306,20 +1301,20 @@ function StatsSection() {
 ───────────────────────────────────────────────────────── */
 
 const PILLARS = [
-  { label: "Learn", desc: "Technical workshops, industry insights, and practical skill development in SQL, Python, Excel, cloud platforms, and more." },
-  { label: "Build", desc: "Case competitions, hackathons, and hands-on projects that put your skills to work and prepare you for real industry challenges." },
-  { label: "Connect", desc: "Industry professionals, recruiters from 18+ partner companies, and a community of students passionate about business and technology." },
+  { label: "Learn", desc: "Workshops and talks that teach you practical skills in SQL, Python, Excel, cloud platforms, and more." },
+  { label: "Build", desc: "Case competitions, hackathons, and projects where you put your skills to work on problems like the ones you'll see in industry." },
+  { label: "Connect", desc: "Meet professionals and recruiters from 18+ partner companies, and get to know other students who love business and technology." },
 ]
 
 function WhatWeDoSection() {
   const headRef = useReveal()
   const gridRef = useReveal()
   return (
-    <section className="panel-section" data-rail style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
+    <section className="panel-section" data-rail data-chapter="1" style={{ padding: "104px 0", position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head pillar-head">
           <h2 className="section-heading" style={{ fontSize: "clamp(34px, 4.6vw, 56px)", margin: 0 }}>What We <span className="accent-italic">Do</span></h2>
-          <p>Three pillars that define every AIS UTD experience — from your first meeting to your first offer.</p>
+          <p>Three things we do, from your first meeting to your first offer.</p>
         </div>
         <div ref={gridRef} className="reveal-stagger pillar-list" style={{ "--step": "140ms" } as React.CSSProperties}>
           {PILLARS.map(({ label, desc }, i) => (
@@ -1342,17 +1337,20 @@ function WhatWeDoSection() {
 /* "Sep 20, 2026" -> { month: "Sep", day: "20" }; anything else (e.g.
    "Date TBA") comes back as a label with no day */
 const splitDate = (d: string) => {
-  const m = d.match(/^([A-Za-z]{3})\w* (\d{1,2})/)
-  return m ? { month: m[1], day: m[2] } : { month: d, day: "" }
+  const at = parseEventDate(d)
+  return at
+    ? { month: at.toLocaleDateString("en-US", { month: "short" }), day: String(at.getDate()) }
+    : { month: d, day: "" }
 }
 
 function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
   const headRef = useReveal()
   const bodyRef = useReveal()
-  const [next, ...later] = UPCOMING
+  const [next, ...later] = splitEvents().upcoming
+  if (!next) return null
   const nd = splitDate(next.date)
   return (
-    <section data-rail style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
+    <section data-rail data-chapter="2" style={{ background: "var(--bg-secondary)", padding: "104px 0", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 52, flexWrap: "wrap", gap: 20 }}>
           <div>
@@ -1383,6 +1381,8 @@ function EventsPreviewSection({ setPage }: { setPage: (p: Page) => void }) {
                 <p className="ev-meta">{next.type}{next.partner && <> · with {next.partner}</>}</p>
                 <h3 className="ev-feature-title">{next.name}</h3>
                 <p className="ev-feature-desc">{next.desc}</p>
+                <Countdown event={next} />
+                <EventActions event={next} compact />
               </div>
             </div>
           </article>
@@ -1421,19 +1421,19 @@ function WhyJoinSection({ onGetInvolved }: { onGetInvolved: () => void }) {
   const headRef = useReveal()
   const bentoRef = useReveal()
   return (
-    <section data-rail style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
+    <section data-rail data-chapter="3" style={{ background: "var(--bg-primary)", padding: "104px 0", position: "relative", overflow: "hidden", transition: "background-color 0.28s ease" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
         <div ref={headRef} className="reveal-head" style={{ textAlign: "center", marginBottom: 56 }}>
           <h2 className="section-heading" style={{ fontSize: "clamp(30px, 4vw, 48px)", margin: "0 0 16px" }}>Why Join <span className="accent-italic">AIS</span>?</h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 17, maxWidth: 480, margin: "0 auto", lineHeight: 1.72 }}>
-            More than a student org — a launchpad for your career at the intersection of business and tech.
+            More than a student org. It's a head start on a career where business and tech meet.
           </p>
         </div>
         <div ref={bentoRef} className="reveal-stagger bento-grid" style={{ "--step": "100ms" } as React.CSSProperties}>
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 0 } as React.CSSProperties}>
             <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: "clamp(24px, 2.4vw, 30px)", color: "var(--text-primary)", marginBottom: 14, lineHeight: 1.15 }}>Industry Access</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 24px", maxWidth: 420 }}>
-              Direct access to 18+ leading companies through tech talks, recruiting panels, and company information sessions. Resume workshops and career prep from professionals who've been there.
+              Meet people from 18+ leading companies at tech talks, recruiting panels, and info sessions. Get resume help and career advice from professionals who've been in your shoes.
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {["Goldman Sachs", "Microsoft", "Deloitte", "Accenture", "JP Morgan"].map((c) => (
@@ -1444,12 +1444,12 @@ function WhyJoinSection({ onGetInvolved }: { onGetInvolved: () => void }) {
           </div>
 
           <BentoStat target={240} suffix="+" label="Students building their future in AIS UTD" />
-          <BentoStat target={8} label="Events every semester — workshops, talks, competitions, and socials" />
+          <BentoStat target={8} label="Events every semester, including workshops, talks, competitions, and socials" />
 
           <div className="bento-tile fx-spot" data-tilt="0.45" style={{ position: "relative", overflow: "hidden", "--i": 3 } as React.CSSProperties}>
             <h3 style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: "clamp(24px, 2.4vw, 30px)", color: "var(--text-primary)", marginBottom: 14, lineHeight: 1.15 }}>Open to Every Major</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.7, margin: "0 0 20px", maxWidth: 400 }}>
-              No CS degree required. AIS UTD welcomes students from business, engineering, arts, sciences, and every major in between. If you're curious about how technology shapes the business world, you belong here.
+              You don't need a CS degree. We have students from business, engineering, arts, sciences, and everything in between. If you're curious about how technology shapes business, you'll fit right in.
             </p>
             <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>
               Join today
@@ -1477,7 +1477,7 @@ function GetInvolvedSection({ onGetInvolved }: { onGetInvolved: () => void }) {
           <span className="accent-italic">future here?</span>
         </h2>
         <p style={{ color: "var(--text-secondary)", fontSize: 17, lineHeight: 1.72, maxWidth: 480, margin: "0 auto 44px" }}>
-          Join AIS UTD and start developing the skills, network, and experiences that set you apart — regardless of your major.
+          Join AIS UTD and build the skills, network, and experience that help you stand out, whatever your major.
         </p>
         <div style={{ display: "flex", gap: 40, justifyContent: "center", flexWrap: "wrap", alignItems: "center" }}>
           <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic>
@@ -1735,10 +1735,245 @@ function SignalRail() {
   )
 }
 
+/* ─────────────────────────────────────────────────────────
+   Story stage
+   The hero graph doesn't end with the hero: once What We Do comes into
+   view it docks into the right gutter and keeps morphing as you read —
+   a ring that lights Learn / Build / Connect, a timeline for Events with
+   the next date pulsing, then a tight ring around the hub for Why Join.
+   Sections opt in with data-chapter="1..3"; positions are read from their
+   live rects, so there is no scroll bookkeeping to go stale.
+───────────────────────────────────────────────────────── */
+
+const STORY_MIN_W = 1100
+const smooth = (t: number) => t * t * (3 - 2 * t)
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+// Which two nodes light for each pillar in What We Do (Learn / Build / Connect)
+const PILLAR_NODES = [[6, 2], [1, 3], [5, 4]]
+
+function StoryStage({ theme, nextLabel }: { theme: Theme; nextLabel: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const labelRef = useRef(nextLabel)
+  labelRef.current = nextLabel
+  const isDark = theme === "dark"
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+    if (!canvas || !ctx) return
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    const ink = isDark ? "242,236,223" : "19,35,58"
+    const accent = isDark ? "248,174,53" : "201,125,0"
+    const paper = isDark ? "14,26,44" : "251,248,240"
+    const rgba = (c: string, a: number) => `rgba(${c},${Math.max(0, Math.min(1, a)).toFixed(3)})`
+
+    let W = 0
+    let H = 0
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      W = window.innerWidth
+      H = window.innerHeight
+      canvas.width = W * dpr
+      canvas.height = H * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    size()
+
+    const edges = VIZ_EDGES.map((e) => ({ ...e }))
+    const pos = VIZ_NODES.map(() => ({ x: 0, y: 0 }))
+    const lit = VIZ_NODES.map(() => 0)
+    let seeded = false
+    let raf = 0
+    let last = 0
+    let wasVisible = true
+
+    const tick = (ts: number) => {
+      raf = requestAnimationFrame(tick)
+      const frame = Math.min(ts - last || 16.7, 50) / 16.7
+      last = ts
+      const t = ts * 0.001
+
+      const secs = Array.from(document.querySelectorAll<HTMLElement>("[data-chapter]"))
+      if (secs.length < 3 || W < STORY_MIN_W) {
+        if (wasVisible) ctx.clearRect(0, 0, W, H)
+        wasVisible = false
+        return
+      }
+      const r = secs.map((e) => e.getBoundingClientRect())
+      const approach = smooth(clamp01((H - r[0].top) / (H * 0.55)))
+      const exit = 1 - smooth(clamp01((H * 0.9 - r[2].bottom) / (H * 0.5)))
+      const gutter = (W - 1200) / 2
+      const A = approach * exit * (gutter >= 90 ? 0.92 : 0.5)
+      if (A <= 0.004) {
+        if (wasVisible) ctx.clearRect(0, 0, W, H)
+        wasVisible = false
+        return
+      }
+      wasVisible = true
+
+      const s12 = smooth(clamp01((H * 0.85 - r[1].top) / (H * 0.5)))
+      const s23 = smooth(clamp01((H * 0.85 - r[2].top) / (H * 0.5)))
+      const w1 = (1 - s12) * (1 - s23)
+      const w2 = s12 * (1 - s23)
+      const w3 = s23
+      const chapter = s23 > 0.5 ? 3 : s12 > 0.5 ? 2 : 1
+
+      // Layouts, docked in the centre of the right gutter
+      const cx = W - Math.max(gutter, 60) / 2
+      const R = Math.min(64, Math.max(24, gutter * 0.36))
+      const sc = Math.min(1.3, Math.max(0.55, R / 44))
+      const hubY = H * 0.5
+      const target = VIZ_NODES.map((n, i) => {
+        const hero = nodeXY(n, W, H, 0.9)
+        if (i === 0) {
+          const hy = w1 * hubY + w2 * H * 0.2 + w3 * hubY
+          return { x: lerp(hero.x, cx, approach), y: lerp(hero.y, hy, approach) }
+        }
+        const k = i - 1
+        const ang = (-90 + k * 60) * (Math.PI / 180)
+        const ang3 = (-60 + k * 60) * (Math.PI / 180)
+        const x = w1 * (cx + Math.cos(ang) * R) + w2 * (cx + (i % 2 ? -1 : 1) * R * 0.28) + w3 * (cx + Math.cos(ang3) * R * 0.62)
+        const y = w1 * (hubY + Math.sin(ang) * R) + w2 * (H * 0.2 + i * H * 0.1) + w3 * (hubY + Math.sin(ang3) * R * 0.62)
+        return { x: lerp(hero.x, x, approach), y: lerp(hero.y, y, approach) }
+      })
+      if (!seeded || reduced) {
+        target.forEach((p, i) => { pos[i].x = p.x; pos[i].y = p.y })
+        seeded = true
+      } else {
+        const f = Math.min(1, 0.16 * frame)
+        target.forEach((p, i) => { pos[i].x += (p.x - pos[i].x) * f; pos[i].y += (p.y - pos[i].y) * f })
+      }
+
+      // Which nodes are lit in this chapter
+      const cycle = Math.floor(t / 2) % 3
+      const goal = VIZ_NODES.map((_, i) => {
+        if (i === 0) return 1
+        if (chapter === 1) return PILLAR_NODES[cycle].includes(i) ? 1 : 0.12
+        if (chapter === 2) return i === 1 ? 1 : 0.18
+        return 1
+      })
+      goal.forEach((g, i) => { lit[i] += (g - lit[i]) * Math.min(1, 0.1 * frame) })
+
+      ctx.clearRect(0, 0, W, H)
+      ctx.globalAlpha = A
+
+      // Edges (a chain in the timeline, spokes and a ring otherwise)
+      for (const e of edges) {
+        const spoke = e.from === 0
+        const wrap = !spoke && e.from === 6
+        const ea = spoke
+          ? e.to === 1 ? 1 : w1 + 0.15 * w2 + w3
+          : wrap ? 0.7 * w1 + 0.7 * w3 : 0.7 * w1 + w2 + 0.7 * w3
+        if (ea < 0.02) continue
+        const p1 = pos[e.from], p2 = pos[e.to]
+        const on = Math.max(lit[e.from], lit[e.to])
+        ctx.beginPath()
+        ctx.moveTo(p1.x, p1.y)
+        ctx.lineTo(p2.x, p2.y)
+        ctx.strokeStyle = rgba(ink, 0.16 * ea)
+        ctx.lineWidth = 1
+        ctx.stroke()
+        if (on > 0.5) {
+          ctx.strokeStyle = rgba(accent, 0.5 * ea * on)
+          ctx.stroke()
+        }
+        if (!reduced && ea > 0.4) {
+          e.signal = (e.signal + e.speed * frame * 1.4) % 1
+          const sx = p1.x + (p2.x - p1.x) * e.signal
+          const sy = p1.y + (p2.y - p1.y) * e.signal
+          ctx.beginPath()
+          ctx.arc(sx, sy, 2 * sc, 0, Math.PI * 2)
+          ctx.fillStyle = rgba(accent, 0.85 * ea)
+          ctx.fill()
+        }
+      }
+
+      // Join: ripples leave the hub
+      if (w3 > 0.05 && !reduced) {
+        for (let k = 0; k < 2; k++) {
+          const ph = (t * 0.45 + k * 0.5) % 1
+          ctx.beginPath()
+          ctx.arc(pos[0].x, pos[0].y, R * 0.3 + ph * R * 1.25, 0, Math.PI * 2)
+          ctx.strokeStyle = rgba(accent, 0.5 * (1 - ph) * w3)
+          ctx.lineWidth = 1.2
+          ctx.stroke()
+        }
+      }
+
+      // Nodes
+      let lowest = 0
+      VIZ_NODES.forEach((n, i) => {
+        const { x, y } = pos[i]
+        const h = lit[i]
+        const hub = i === 0
+        const pulse = !reduced && ((chapter === 2 && i === 1) || hub) ? 0.5 + 0.5 * Math.sin(t * 3) : 0
+        const nr = (hub ? 10 + 2 * w3 : 6.2) * sc * (1 + 0.14 * pulse)
+        lowest = Math.max(lowest, y + nr)
+
+        const gl = ctx.createRadialGradient(x, y, nr * 0.5, x, y, nr * 3)
+        gl.addColorStop(0, rgba(accent, 0.1 + 0.28 * h * (0.7 + 0.3 * pulse)))
+        gl.addColorStop(1, rgba(accent, 0))
+        ctx.beginPath()
+        ctx.arc(x, y, nr * 3, 0, Math.PI * 2)
+        ctx.fillStyle = gl
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.arc(x, y, nr, 0, Math.PI * 2)
+        ctx.fillStyle = rgba(paper, 0.95)
+        ctx.fill()
+        ctx.lineWidth = 1.4
+        ctx.strokeStyle = rgba(ink, 0.6 * (1 - h) + 0.12)
+        ctx.stroke()
+        if (h > 0.02) {
+          ctx.strokeStyle = rgba(accent, h)
+          ctx.stroke()
+        }
+        ctx.beginPath()
+        ctx.arc(x, y, nr * 0.38, 0, Math.PI * 2)
+        ctx.fillStyle = h > 0.5 ? rgba(accent, 1) : rgba(ink, 0.7)
+        ctx.fill()
+      })
+
+      // Caption under the cluster
+      if (gutter >= 100) {
+        const label =
+          chapter === 1 ? ["Learn", "Build", "Connect"][cycle]
+          : chapter === 2 ? labelRef.current
+          : "You"
+        ctx.font = `600 ${Math.round(10.5 * Math.min(1.1, sc + 0.1))}px 'General Sans', system-ui, sans-serif`
+        if ("letterSpacing" in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = "2px"
+        ctx.textAlign = "center"
+        ctx.textBaseline = "top"
+        ctx.fillStyle = rgba(accent, 0.95)
+        ctx.fillText(label.toUpperCase(), cx + 1, Math.min(H - 24, lowest + 26 * sc))
+        ctx.fillStyle = rgba(ink, 0.5)
+        ctx.fillText(`0${chapter}`, cx + 1, Math.min(H - 24, lowest + 26 * sc) + 16)
+        if ("letterSpacing" in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = "0px"
+      }
+      ctx.globalAlpha = 1
+    }
+
+    raf = requestAnimationFrame(tick)
+    window.addEventListener("resize", size)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("resize", size)
+    }
+  }, [isDark])
+
+  return <canvas ref={canvasRef} className="story-stage" aria-hidden />
+}
+
 function HomePage({ setPage, theme, onGetInvolved }: { setPage: (p: Page, anchor?: string) => void; theme: Theme; onGetInvolved: () => void }) {
+  const soon = splitEvents().upcoming[0]
+  const soonAt = soon ? parseEventDate(soon.date) : null
+  const nextLabel = soonAt ? `Next · ${soonAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Events"
   return (
     <main style={{ position: "relative" }}>
       <SignalRail />
+      <StoryStage theme={theme} nextLabel={nextLabel} />
       <StatHandoff />
       <HeroSection setPage={setPage} theme={theme} onGetInvolved={onGetInvolved} />
       <CompaniesSection />
@@ -1752,124 +1987,12 @@ function HomePage({ setPage, theme, onGetInvolved }: { setPage: (p: Page, anchor
 }
 
 /* ─────────────────────────────────────────────────────────
-   Events Page
-───────────────────────────────────────────────────────── */
-
-
-const PAGE_SIZE = 6
-
-function EventsPage() {
-  const [count, setCount] = useState(PAGE_SIZE)
-  const [loading, setLoading] = useState(false)
-  const [newBatch, setNewBatch] = useState(new Set<number>(Array.from({ length: PAGE_SIZE }, (_, i) => i)))
-  const [imageLoaded, setImageLoaded] = useState(new Set<number>())
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const hasMore = count < ALL_EVENTS.length
-
-  const handleImageLoad = (idx: number) => {
-    setImageLoaded((prev) => new Set(prev).add(idx))
-  }
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel || !hasMore) return
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting && !loading) {
-          setLoading(true)
-          setTimeout(() => {
-            setCount((prev) => {
-              const next = Math.min(prev + PAGE_SIZE, ALL_EVENTS.length)
-              setNewBatch(new Set(Array.from({ length: next - prev }, (_, i) => prev + i)))
-              return next
-            })
-            setLoading(false)
-          }, 500)
-        }
-      },
-      { threshold: 0.1, rootMargin: "0px 0px 80px 0px" },
-    )
-    obs.observe(sentinel)
-    return () => obs.disconnect()
-  }, [loading, hasMore])
-
-  return (
-    <main style={{ background: "var(--bg-primary)", minHeight: "100vh", paddingTop: "var(--nav-h)", transition: "background-color 0.28s ease" }}>
-      <div className="page-header">
-        <div className="page-header-inner">
-          <h1>Events</h1>
-          <p>Workshops, networking nights, competitions, and more from AIS UTD.</p>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "52px 24px 80px" }}>
-        <div className="events-grid">
-          {ALL_EVENTS.slice(0, count).map((ev, idx) => (
-            <div
-              key={ev.name}
-              className={`event-photo-card fx-spot${newBatch.has(idx) ? " enter-rise" : ""}`}
-              data-tilt="0.5"
-              style={{ "--i": idx % PAGE_SIZE } as React.CSSProperties}
-            >
-              <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden" }}>
-                <div
-                  className={imageLoaded.has(idx) ? "" : "image-loading"}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    zIndex: imageLoaded.has(idx) ? 0 : 1,
-                  }}
-                />
-                <img
-                  loading="lazy"
-                  src={`https://images.unsplash.com/photo-${ev.photo}?w=640&h=360&fit=crop&auto=format`}
-                  alt={ev.name}
-                  onLoad={() => handleImageLoad(idx)}
-                  className={`event-photo-img${imageLoaded.has(idx) ? " image-loaded" : ""}`}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: imageLoaded.has(idx) ? 1 : 0.7 }}
-                />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(10,20,34,0.92) 0%, rgba(10,20,34,0.35) 55%, transparent 100%)" }} />
-                {ev.partner && (
-                  <span style={{ position: "absolute", top: 12, right: 12, fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(10,20,34,0.8)", border: "1px solid rgba(var(--accent-rgb),0.28)", borderRadius: 4, padding: "3px 10px", backdropFilter: "blur(6px)" }}>
-                    {ev.partner}
-                  </span>
-                )}
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 16px 16px" }}>
-                  <div style={{ color: "#C9C2B3", fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 6 }}>{ev.date}</div>
-                  <div style={{ fontFamily: "var(--font-headline)", fontWeight: 600, fontSize: 21, color: "#F2ECDF", lineHeight: 1.15 }}>{ev.name}</div>
-                  {ev.partner && <div style={{ color: "#C9C2B3", fontSize: 12, fontStyle: "italic", marginTop: 3 }}>with {ev.partner}</div>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div ref={sentinelRef} style={{ height: 1 }} />
-
-        {loading && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 7, padding: "44px 0 0" }}>
-            {[0, 1, 2].map((i) => (
-              <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", display: "inline-block", animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-            ))}
-          </div>
-        )}
-
-        {!hasMore && count > PAGE_SIZE && (
-          <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, marginTop: 52, letterSpacing: "0.04em" }}>
-            All {ALL_EVENTS.length} events loaded
-          </p>
-        )}
-      </div>
-    </main>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────
    Contact Page
 ───────────────────────────────────────────────────────── */
 
 function ContactSocialBtn({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
   return (
-    <a href={href} className="social-btn social-btn--label">
+    <a href={href} className="social-btn social-btn--label" target="_blank" rel="noopener noreferrer">
       {icon}
       {label}
     </a>
@@ -1910,7 +2033,7 @@ function ContactPage({ onGetInvolved }: { onGetInvolved: () => void }) {
           <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "36px 32px", transition: "background-color 0.28s ease, border-color 0.28s ease", "--i": 1 } as React.CSSProperties}>
             <h2 style={{ fontFamily: "var(--font-headline)", fontWeight: 500, fontSize: 32, color: "var(--text-primary)", margin: "0 0 12px", lineHeight: 1.1 }}>Ready to <span className="accent-italic">join?</span></h2>
             <p style={{ color: "var(--text-secondary)", fontSize: 15, lineHeight: 1.68, margin: "0 0 28px" }}>
-              Fill out our interest form and we'll reach out with event info and membership details. Open to all majors — no experience required.
+              Fill out our interest form and we'll reach out with event info and membership details. Open to all majors, and no experience is needed.
             </p>
             <button type="button" onClick={onGetInvolved} className="join-btn" data-magnetic style={{ marginBottom: 28 }}>
               Get Involved
@@ -1919,7 +2042,7 @@ function ContactPage({ onGetInvolved }: { onGetInvolved: () => void }) {
             <hr className="section-divider" style={{ margin: "28px 0" }} />
             <div style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6 }}>
               <strong style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: 13 }}>Meetings</strong><br />
-              Held regularly throughout the semester — check our social channels for the current schedule.
+              Held regularly throughout the semester. Check our social channels for the current schedule.
             </div>
           </div>
         </div>
@@ -2040,7 +2163,7 @@ export default function App() {
     }, 350)
   }
 
-  const openContactForm = () => setContactFormOpen(true)
+  const openContactForm = () => { window.open(MEMBER_FORM_URL, "_blank", "noopener,noreferrer") }
   const closeContactForm = () => setContactFormOpen(false)
 
   return (

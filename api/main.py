@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import contact
+from api.routers import contact, rsvp
 
 app = FastAPI(title="AIS UTD API", version="1.0.0")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(contact.router)
+app.include_router(rsvp.router)
 
 
 @app.get("/api/health")

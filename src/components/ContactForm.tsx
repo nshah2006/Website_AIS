@@ -152,7 +152,7 @@ export default function ContactForm({ onClose, source = "website", inline = fals
           Get Involved
         </h2>
         <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>
-          Join AIS UTD and start building your future at the intersection of business and technology.
+          Join AIS UTD and start building a career in business and technology.
         </p>
         {form}
       </div>

@@ -8,20 +8,23 @@ interface EventRow {
   when: string
   partner: string | null
   upcoming: boolean
+  photo: string
 }
 
 /* Resolve a topic's event names against the shared event data.
    Upcoming: "Sep 27, 2026" -> "Sep 27"; past: "October 2025" -> "Oct 2025". */
 function eventRow(name: string): EventRow | null {
   const up = UPCOMING.find((e) => e.name === name)
-  if (up) return { name, when: up.date.replace(/, \d{4}$/, ""), partner: up.partner, upcoming: true }
+  if (up) return { name, when: up.date.replace(/, \d{4}$/, ""), partner: up.partner, upcoming: true, photo: up.photo }
   const past = ALL_EVENTS.find((e) => e.name === name)
   if (past) {
     const [month, year] = past.date.split(" ")
-    return { name, when: `${month.slice(0, 3)} ${year}`, partner: past.partner, upcoming: false }
+    return { name, when: `${month.slice(0, 3)} ${year}`, partner: past.partner, upcoming: false, photo: past.photo }
   }
   return null
 }
+
+const photoUrl = (id: string, w: number, h: number) => `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format`
 
 const sectionId = (t: Topic) => `topic-${t.slug}`
 
@@ -37,18 +40,16 @@ function TopicSection({ topic }: { topic: Topic }) {
           <p className="topic-lead">{topic.lead}</p>
         </div>
         <div className="topic-body">
-          <p className="topic-text">{topic.body}</p>
-          <p className="eyebrow" style={{ margin: "0 0 6px" }}>Where it shows up</p>
-          <div ref={listRef} className="reveal-stagger topic-events" style={{ "--step": "90ms" } as React.CSSProperties}>
-            {rows.map((r, i) => (
-              <div key={r.name} className="topic-row" style={{ "--i": i } as React.CSSProperties}>
-                <span className="topic-when">{r.when}</span>
-                <span className="topic-name">
-                  {r.name}
-                  {r.partner && <em> with {r.partner}</em>}
-                </span>
-                {r.upcoming && <span className="tag tag--accent">Upcoming</span>}
-              </div>
+          <p className="topic-text">{topic.body.split(/(?<=\.)\s/)[0]}</p>
+          <div ref={listRef} className={`reveal-stagger topic-photos topic-photos--${Math.min(rows.length, 5)}`} style={{ "--step": "90ms" } as React.CSSProperties}>
+            {rows.slice(0, 5).map((r, i) => (
+              <figure key={r.name} className="topic-photo" style={{ "--i": i } as React.CSSProperties}>
+                <img src={photoUrl(r.photo, i === 0 ? 900 : 520, i === 0 ? 640 : 400)} alt={r.name} loading="lazy" />
+                <figcaption>
+                  <span className="topic-photo-when">{r.when}{r.upcoming ? " · Upcoming" : ""}</span>
+                  <span className="topic-photo-name">{r.name}</span>
+                </figcaption>
+              </figure>
             ))}
           </div>
         </div>
@@ -93,7 +94,7 @@ export default function InitiativesPage({ setPage, onGetInvolved }: { setPage: (
       <div className="page-header">
         <div className="page-header-inner">
           <h1>Our <span className="accent-italic">Initiatives</span></h1>
-          <p>Six areas where AIS UTD takes the initiative, and what each looks like in practice.</p>
+          <p>Six areas we focus on, and what each one looks like in practice.</p>
         </div>
       </div>
 

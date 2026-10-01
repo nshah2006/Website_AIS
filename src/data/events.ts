@@ -9,6 +9,13 @@ export interface UpcomingEvent {
   desc: string
   partner: string | null
   photo: string
+  /* Optional external sign-up form; replaces the in-site RSVP. */
+  rsvpUrl?: string
+  /* Optional. With `time` ("18:00", Central) the calendar entry is timed;
+     without it the event is added as an all-day entry. */
+  time?: string
+  durationMin?: number
+  location?: string
 }
 
 export interface PastEvent {
@@ -19,9 +26,9 @@ export interface PastEvent {
 }
 
 export const UPCOMING: UpcomingEvent[] = [
-  { name: "Poker Night", date: "Date TBA", type: "Social", desc: "Details coming soon.", partner: null, photo: "1704121421071-72b8509da9a8" },
-  { name: "SQL & Python Workshop", date: "Sep 27, 2026", type: "Workshop", desc: "Hands-on session covering data querying and scripting fundamentals.", partner: null, photo: "1516321318423-f06f85e504b3" },
-  { name: "Networking Night", date: "Oct 5, 2026", type: "Networking", desc: "Connect with consulting and tech recruiters over a structured mixer.", partner: "Deloitte", photo: "1515187029135-18ee286d815b" },
+  { name: "Poker Night", date: "Date TBA", type: "Social", desc: "Details coming soon.", partner: null, rsvpUrl: "https://forms.gle/oNEGjTbjvZ3soo6Y6", photo: "1704121421071-72b8509da9a8" },
+  { name: "SQL & Python Workshop", date: "Sep 27, 2026", type: "Workshop", desc: "A hands-on session on the basics of querying data and writing scripts.", partner: null, photo: "1516321318423-f06f85e504b3" },
+  { name: "Networking Night", date: "Oct 5, 2026", type: "Networking", desc: "Meet consulting and tech recruiters at a relaxed mixer.", partner: "Deloitte", photo: "1515187029135-18ee286d815b" },
 ]
 
 export const ALL_EVENTS: PastEvent[] = [
